@@ -36,7 +36,7 @@ module s_axi_reg(
     input   [3:0]       wstrb_i,
     input               wlast_i,
     input               wvalid_i,
-    input               wready_i,
+    output              wready_o,
     // READ SIGNALS
     //   Address
     input   [3:0]       arid_i,
@@ -44,11 +44,11 @@ module s_axi_reg(
     input               arvalid_i,
     output              arready_o
     //   Data
-    input   [3:0]       rid_i,
-    input   [31:0]      rdata_i,
-    input   [3:0]       rstrb_i,
-    input               rlast_i,
-    input               rvalid_i,
+    output   [3:0]      rid_i,
+    output   [31:0]     rdata_i,
+    output   [3:0]      rstrb_i,
+    output              rlast_i,
+    output              rvalid_i,
     input               rready_i,
     // RESPONSE SIGNALS
     output  [3:0]       bid_o,
@@ -56,4 +56,90 @@ module s_axi_reg(
     output              bvalid_o,
     input               bready_i,
     );
+
+logic           reg_data_en;
+logic [31:0]    reg_data_ff [0:7];
+
+always_ff @( posedge clk or negedge areset ) begin
+    if(!areset)
+    begin
+        reg_data_ff[0] <= 32'b0;
+        reg_data_ff[1] <= 32'b0;
+        reg_data_ff[2] <= 32'b0;
+        reg_data_ff[3] <= 32'b0;
+    end
+    else
+    begin
+        if(reg_data_en)
+        begin
+            reg_data_ff[awaddr_ff] <= wdata_i;
+        end
+    end
+end
+
+/* Module signals */
+
+logic               awaddr_en;
+logic [31:0]        awaddr_ff;
+
+always_ff @( posedge clk or negedge areset ) begin
+    if(!areset)
+    begin
+        awaddr_ff <= 0;
+    end
+    else
+    begin
+        if(awaddr_en)
+        begin
+            awaddr_ff <= awaddr_i;
+            awaddr_en <= 0;
+        end
+    end
+end
+
+logic               awready_en;
+logic               awready_ff;
+
+assign awready_o = awready;
+
+always_ff @( posedge clk or negedge areset ) begin
+    if(!areset)
+    begin
+        awready_ff <= 0;
+    end
+    else
+    begin
+        if(awready_en)
+        begin
+            awready_ff <= 1;
+            awready_en <= 0;
+        end
+    end
+end
+
+/* Functional methods */
+always_ff @( posedge clk or negedge areset ) begin
+    if(!areset)
+    begin
+        // Reset
+    end
+    else
+    begin
+        // Handshake write address
+        if(awvalid_i)
+        begin
+            awaddr_en <= 1;
+            awready_en <= 1;
+        end
+
+        // Handshake write data
+        if(wvalid_i)
+        begin
+            reg_data_en <= 1;
+            wready_o <= 0;
+        end
+    end
+end
+
+
 endmodule
