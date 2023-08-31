@@ -73,6 +73,7 @@ always_ff @( posedge clk or negedge areset ) begin
         if(reg_data_en)
         begin
             reg_data_ff[awaddr_ff] <= wdata_i;
+            bvalid_en <= 1;
         end
     end
 end
@@ -113,6 +114,30 @@ always_ff @( posedge clk or negedge areset ) begin
         begin
             awready_ff <= 1;
             awready_en <= 0;
+        end
+    end
+end
+
+// Response valid
+logic               bvalid_en;
+logic               bvalid_ff;
+
+always_ff @( posedge clk or negedge areset ) begin
+    if(!areset)
+    begin
+        awready_ff <= 0;
+    end
+    else
+    begin
+        if(bvalid_en)
+        begin
+            bvalid_ff <= 1;
+            bvalid_en <= 0;
+        end
+        
+        if(bready_i)
+        begin
+            bvalid_ff <= 0;
         end
     end
 end
