@@ -29,10 +29,14 @@ logic areset;
 
 initial begin
 clk = 0;
-areset = 1;
+areset = 0;
 
 forever 
     #5 clk = ~clk;
+end
+
+initial begin
+    s_write_data();
 end
 
 logic   [3:0]      awid_i;
@@ -63,5 +67,35 @@ s_axi_reg slave(
     .bvalid_o       (bvalid_o),
     .bready_i       (bready_i)
 );
+
+task s_write_data();
+    #20;
+    areset = 1;
+    #20;
+    awaddr_i = 32'b1;
+
+    #7
+    awvalid_i = '1;
+    
+    do begin
+        @(posedge clk);
+    end while(!awready_o); 
+    awvalid_i = '0;
+
+    wdata_i = 32'hABCDEF01;
+    wvalid_i = '1;
+
+    do begin
+        @(posedge clk);
+    end while(!wready_o); 
+    wvalid_i = '0;
+
+
+    do begin
+        @(posedge clk);
+    end while(!bvalid_o); 
+    #40;
+    bready_i = '1;
+endtask
 
 endmodule
