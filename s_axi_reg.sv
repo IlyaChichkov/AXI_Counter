@@ -29,7 +29,7 @@ module s_axi_reg(
     input   [3:0]       awid_i,
     input   [31:0]      awaddr_i,
     input               awvalid_i,
-    output              awready_o
+    output              awready_o,
     //   Data
     input   [3:0]       wid_i,
     input   [31:0]      wdata_i,
@@ -42,7 +42,7 @@ module s_axi_reg(
     input   [3:0]       arid_i,
     input   [31:0]      araddr_i,
     input               arvalid_i,
-    output              arready_o
+    output              arready_o,
     //   Data
     output   [3:0]      rid_i,
     output   [31:0]     rdata_i,
@@ -54,7 +54,7 @@ module s_axi_reg(
     output  [3:0]       bid_o,
     output  [1:0]       bresp_o,
     output              bvalid_o,
-    input               bready_i,
+    input               bready_i
     );
 
 logic           reg_data_en;
