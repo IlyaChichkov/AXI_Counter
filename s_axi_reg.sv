@@ -26,40 +26,49 @@ module s_axi_reg(
     input               areset,
     // WRITE SIGNALS
     //   Address
-    input   [3:0]       awid_i,
-    input   [31:0]      awaddr_i,
-    input               awvalid_i,
-    output              awready_o,
+    input  logic [3:0]       awid_i,
+    input  logic [31:0]      awaddr_i,
+    input  logic             awvalid_i,
+    output logic             awready_o,
     //   Data
-    input   [3:0]       wid_i,
-    input   [31:0]      wdata_i,
-    input   [3:0]       wstrb_i,
-    input               wlast_i,
-    input               wvalid_i,
-    output              wready_o,
+    input  logic [3:0]       wid_i,
+    input  logic [31:0]      wdata_i,
+    input  logic [3:0]       wstrb_i,
+    input  logic             wlast_i,
+    input  logic             wvalid_i,
+    output logic             wready_o,
     // READ SIGNALS
     //   Address
-    input   [3:0]       arid_i,
-    input   [31:0]      araddr_i,
-    input               arvalid_i,
-    output              arready_o,
+    input  logic [3:0]       arid_i,
+    input  logic [31:0]      araddr_i,
+    input  logic             arvalid_i,
+    output logic             arready_o,
     //   Data
-    output   [3:0]      rid_o,
-    output   [31:0]     rdata_o,
-    output   [3:0]      rstrb_o,
-    output              rlast_o,
-    output              rvalid_o,
-    input               rready_i,
+    output logic   [3:0]      rid_i,
+    output logic   [31:0]     rdata_i,
+    output logic   [3:0]      rstrb_i,
+    output logic              rlast_i,
+    output logic             rvalid_i,
+    input  logic             rready_i,
     // RESPONSE SIGNALS
-    output  [3:0]       bid_o,
-    output  [1:0]       bresp_o,
-    output              bvalid_o,
-    input               bready_i
+    output logic [3:0]       bid_o,
+    output logic [1:0]       bresp_o,
+    output logic             bvalid_o,
+    input  logic             bready_i
     );
 
 logic           reg_data_en;
 logic [31:0]    reg_data_ff [0:7];
 
+/* Module signals */
+
+logic               awaddr_en;
+logic [31:0]        awaddr_ff;
+
+logic               awready_en;
+logic               wready_en;
+
+/* Functional methods */
 always_ff @( posedge clk or negedge areset ) begin
     if(!areset)
     begin
@@ -73,16 +82,9 @@ always_ff @( posedge clk or negedge areset ) begin
         if(reg_data_en)
         begin
             reg_data_ff[awaddr_ff] <= wdata_i;
-            bvalid_en <= 1;
         end
     end
 end
-
-/* Module signals */
-
-// Write address
-logic               awaddr_en;
-logic [31:0]        awaddr_ff;
 
 always_ff @( posedge clk or negedge areset ) begin
     if(!areset)
@@ -99,52 +101,44 @@ always_ff @( posedge clk or negedge areset ) begin
     end
 end
 
-// Write ready
-logic               awready_en;
-logic               awready_ff;
-
-assign awready_o = awready;
-
 always_ff @( posedge clk or negedge areset ) begin
     if(!areset)
     begin
-        awready_ff <= 0;
+        awready_o <= 0;
     end
     else
     begin
         if(awready_en)
         begin
-            awready_ff <= 1;
+            awready_o <= 1;
             awready_en <= 0;
+        end
+        else
+        begin
+            awready_o <= 0;
         end
     end
 end
-
-// Response valid
-logic               bvalid_en;
-logic               bvalid_ff;
 
 always_ff @( posedge clk or negedge areset ) begin
     if(!areset)
     begin
-        awready_ff <= 0;
+        wready_o <= 0;
     end
     else
     begin
-        if(bvalid_en)
+        if(wready_en)
         begin
-            bvalid_ff <= 1;
-            bvalid_en <= 0;
+            wready_o <= 1;
+            wready_en <= 0;
         end
-        
-        if(bready_i)
+        else
         begin
-            bvalid_ff <= 0;
+            wready_o <= 0;
         end
     end
 end
 
-/* Functional methods */
 always_ff @( posedge clk or negedge areset ) begin
     if(!areset)
     begin
@@ -163,7 +157,7 @@ always_ff @( posedge clk or negedge areset ) begin
         if(wvalid_i)
         begin
             reg_data_en <= 1;
-            wready_o <= 0;
+            wready_en <= 1;
         end
     end
 end
