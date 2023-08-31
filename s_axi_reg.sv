@@ -44,11 +44,11 @@ module s_axi_reg(
     input               arvalid_i,
     output              arready_o,
     //   Data
-    output   [3:0]      rid_i,
-    output   [31:0]     rdata_i,
-    output   [3:0]      rstrb_i,
-    output              rlast_i,
-    output              rvalid_i,
+    output   [3:0]      rid_o,
+    output   [31:0]     rdata_o,
+    output   [3:0]      rstrb_o,
+    output              rlast_o,
+    output              rvalid_o,
     input               rready_i,
     // RESPONSE SIGNALS
     output  [3:0]       bid_o,
