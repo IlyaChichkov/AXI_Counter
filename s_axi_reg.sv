@@ -80,6 +80,7 @@ end
 
 /* Module signals */
 
+// Write address
 logic               awaddr_en;
 logic [31:0]        awaddr_ff;
 
@@ -98,6 +99,7 @@ always_ff @( posedge clk or negedge areset ) begin
     end
 end
 
+// Write ready
 logic               awready_en;
 logic               awready_ff;
 
