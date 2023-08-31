@@ -62,102 +62,91 @@ logic [31:0]    reg_data_ff [0:7];
 
 /* Module signals */
 
-logic               awaddr_en;
-logic [31:0]        awaddr_ff;
-
 logic               awready_en;
 logic               wready_en;
+logic               bvalid_en;
 
 /* Functional methods */
+
+generate
+    for(genvar i = 0; i < 8; i++)
+    begin
+        always_ff @( posedge clk or negedge areset ) begin
+            if(!areset)
+            begin
+                reg_data_ff[i] <= 32'b0;
+            end
+        end
+    end
+endgenerate
+
+// Write data
 always_ff @( posedge clk or negedge areset ) begin
     if(!areset)
     begin
-        reg_data_ff[0] <= 32'b0;
-        reg_data_ff[1] <= 32'b0;
-        reg_data_ff[2] <= 32'b0;
-        reg_data_ff[3] <= 32'b0;
+        
     end
     else
     begin
         if(reg_data_en)
         begin
-            reg_data_ff[awaddr_ff] <= wdata_i;
+            reg_data_ff[awaddr_i] <= wdata_i;
+            awready_en <= 1; // Got data -> ready HIGH  
+            wready_en <= 1; // Got data -> ready HIGH  
+            reg_data_en <= 0;
         end
     end
 end
 
+assign awready_o = awready_en ? 1 : 0;
+assign wready_o  = wready_en ? 1 : 0;
+assign bvalid_o  = bvalid_en ? 1 : 0;
+
+// Response valid
 always_ff @( posedge clk or negedge areset ) begin
     if(!areset)
     begin
-        awaddr_ff <= 0;
+        bvalid_en <= 1;
     end
     else
     begin
-        if(awaddr_en)
+        if(bvalid_en && bready_i)
         begin
-            awaddr_ff <= awaddr_i;
-            awaddr_en <= 0;
+            bvalid_en <= 0;
         end
     end
 end
 
-always_ff @( posedge clk or negedge areset ) begin
-    if(!areset)
-    begin
-        awready_o <= 0;
-    end
-    else
-    begin
-        if(awready_en)
-        begin
-            awready_o <= 1;
-            awready_en <= 0;
-        end
-        else
-        begin
-            awready_o <= 0;
-        end
-    end
-end
+logic awrite_handshake;
+logic write_handshake;
 
-always_ff @( posedge clk or negedge areset ) begin
-    if(!areset)
-    begin
-        wready_o <= 0;
-    end
-    else
-    begin
-        if(wready_en)
-        begin
-            wready_o <= 1;
-            wready_en <= 0;
-        end
-        else
-        begin
-            wready_o <= 0;
-        end
-    end
-end
+assign awrite_handshake =  awvalid_i && awready_o;
+assign write_handshake = wvalid_i && wready_o;
 
+// Handshake
 always_ff @( posedge clk or negedge areset ) begin
     if(!areset)
     begin
         // Reset
+        awready_en <= 1;
+        wready_en <= 1;
+        bvalid_en <= 1;
     end
     else
     begin
-        // Handshake write address
-        if(awvalid_i)
+        // Handshake write address and data
+
+
+        if(awrite_handshake)
         begin
-            awaddr_en <= 1;
-            awready_en <= 1;
+            awready_en <= 0; // TODO: Нужно ли сохранять адрес?
         end
 
-        // Handshake write data
-        if(wvalid_i)
+        if(write_handshake)
         begin
             reg_data_en <= 1;
-            wready_en <= 1;
+            wready_en <= 0;
+            bvalid_en <= 1;
         end
     end
 end
