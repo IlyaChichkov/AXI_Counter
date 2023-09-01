@@ -129,9 +129,6 @@ always_ff @( posedge clk or negedge areset ) begin
     if(!areset)
     begin
         // Reset
-        awready_en <= 1;
-        wready_en <= 1;
-        bvalid_en <= 1;
     end
     else
     begin
