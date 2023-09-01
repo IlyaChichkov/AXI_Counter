@@ -21,7 +21,7 @@
 
 
 module s_axi_reg(
-    // GLOBAL SIGNALS
+    // GLOBAL SIGNALS 
     input               clk,        
     input               areset,
     // WRITE SIGNALS
