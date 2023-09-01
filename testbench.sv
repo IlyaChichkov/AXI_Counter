@@ -45,6 +45,7 @@ logic              awvalid_i;
 logic              awready_o;
 
 logic   [31:0]     wdata_i;
+logic [3:0]        wstrb_i;
 logic              wvalid_i;
 logic              wready_o;
 
@@ -61,6 +62,7 @@ s_axi_reg slave(
     .awvalid_i      (awvalid_i),
     .awready_o      (awready_o),
     .wdata_i        (wdata_i),
+    .wstrb_i        (wstrb_i),
     .wvalid_i       (wvalid_i),
     .wready_o       (wready_o),
     .bresp_o        (bresp_o),
@@ -69,33 +71,47 @@ s_axi_reg slave(
 );
 
 task s_write_data();
-    #20;
-    areset = 1;
-    #20;
-    awaddr_i = 32'b1;
+    awid_i = 0;
+    awaddr_i = 0;
+    wdata_i = 0;
+    bready_i = 0;
+    awvalid_i = 0;
+    wvalid_i = 0;
 
-    #7
-    awvalid_i = '1;
-    
-    do begin
-        @(posedge clk);
-    end while(!awready_o); 
-    awvalid_i = '0;
+    for (int i = 0; i < 10; i++) begin
+        $display("\tWrite data i=%0d",i);
+        #20;
+        areset = 1;
+        #20;
+        awaddr_i = 32'b1;
 
-    wdata_i = 32'hABCDEF01;
-    wvalid_i = '1;
+        #7
+        awvalid_i = '1;
+        
+        do begin
+            @(posedge clk);
+        end while(!awready_o); 
+        awvalid_i = '0;
 
-    do begin
-        @(posedge clk);
-    end while(!wready_o); 
-    wvalid_i = '0;
+        wstrb_i = 4'b1010;
+        wdata_i = 32'hABCDEFAC;
+        #10;
+        wvalid_i = '1;
+
+        do begin
+            @(posedge clk);
+        end while(!wready_o); 
+        wvalid_i = '0;
 
 
-    do begin
-        @(posedge clk);
-    end while(!bvalid_o); 
-    #40;
-    bready_i = '1;
+        do begin
+            @(posedge clk);
+        end while(!bvalid_o); 
+        #5;
+        bready_i = '1;
+        #20;
+        bready_i = '0;
+    end
 endtask
 
 endmodule
