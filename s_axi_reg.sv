@@ -57,7 +57,6 @@ module s_axi_reg(
     input  logic             bready_i
     );
 
-logic           reg_data_en;
 logic [31:0]    reg_data_ff [0:7];
 
 /* Module signals */
@@ -89,12 +88,11 @@ always_ff @( posedge clk or negedge areset ) begin
     end
     else
     begin
-        if(reg_data_en)
+        if(write_handshake)
         begin
-            reg_data_ff[awaddr_i] <= wdata_i;
             awready_en <= 1; // Got data -> ready HIGH  
             wready_en <= 1; // Got data -> ready HIGH  
-            reg_data_en <= 0;
+            bvalid_en <= 1;
         end
     end
 end
@@ -147,9 +145,7 @@ always_ff @( posedge clk or negedge areset ) begin
 
         if(write_handshake)
         begin
-            reg_data_en <= 1;
             wready_en <= 0;
-            bvalid_en <= 1;
         end
     end
 end
