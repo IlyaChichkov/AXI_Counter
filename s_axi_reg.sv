@@ -99,6 +99,20 @@ generate
     end
 endgenerate
 
+
+// Write data
+generate
+    for(genvar i = 0; i < 4; i++)
+    begin
+        always_ff @( posedge clk ) begin
+            if(write_handshake)
+            begin
+                if(wstrb_i[i]) reg_data_ff[awaddr_i][(8*i)+7:(8*i)] <= wdata_i[(8*i)+7:(8*i)];
+            end
+        end
+    end
+endgenerate
+
 // Write data
 always_ff @( posedge clk or negedge areset ) begin
     if(!areset)
