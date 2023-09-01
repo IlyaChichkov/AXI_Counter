@@ -84,7 +84,8 @@ endgenerate
 always_ff @( posedge clk or negedge areset ) begin
     if(!areset)
     begin
-        
+        // Reset
+        wready_en <= 1;
     end
     else
     begin
@@ -107,6 +108,8 @@ always_ff @( posedge clk or negedge areset ) begin
     if(!areset)
     begin
         bvalid_en <= 1;
+        bid_o <= '0;
+        bresp_o <= '0;
     end
     else
     begin
