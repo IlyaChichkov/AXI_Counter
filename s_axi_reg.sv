@@ -61,11 +61,31 @@ logic [31:0]    reg_data_ff [0:7];
 
 /* Module signals */
 
+logic [31:0]        awaddr_ff;
+
 logic               awready_en;
 logic               wready_en;
 logic               bvalid_en;
 
 /* Functional methods */
+
+// Write address
+always_ff @( posedge clk or negedge areset ) begin
+    if(!areset)
+    begin
+        awready_en <= 1;
+        awaddr_ff <= '0;
+    end
+    else
+    begin
+        if(awrite_handshake)
+        begin
+            awaddr_ff <= awaddr_i;
+        end
+    end
+end
+
+// Write data reset
 
 generate
     for(genvar i = 0; i < 8; i++)
