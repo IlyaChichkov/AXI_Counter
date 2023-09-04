@@ -35,7 +35,7 @@ module s_axi_reg(
     input  logic             bready_i
     );
 
-logic [31:0]    reg_data_ff [0:7];
+logic [31:0]    BRAM [0:7];
 
 /* Module signals */
 
@@ -82,7 +82,7 @@ generate
         always_ff @( posedge clk or negedge areset ) begin
             if(!areset)
             begin
-                reg_data_ff[i] <= 32'b0;
+                BRAM[i] <= 32'b0;
             end
         end
     end
@@ -96,7 +96,7 @@ generate
         always_ff @( posedge clk ) begin
             if(write_handshake && has_addr)
             begin
-                if(wstrb_i[i]) reg_data_ff[awaddr_i][(8*i)+7:(8*i)] <= wdata_ff[(8*i)+7:(8*i)];
+                if(wstrb_i[i]) BRAM[awaddr_i][(8*i)+7:(8*i)] <= wdata_ff[(8*i)+7:(8*i)];
                 has_addr <= 0;
                 has_data <= 0;
             end
@@ -197,7 +197,7 @@ always_ff @( posedge clk or negedge areset ) begin
             // TODO: arid_i
             araddr_ff <= araddr_i;
             // TODO: strb
-            rdata_ff <= reg_data_ff[araddr_i];
+            rdata_ff <= BRAM[araddr_i];
             aread_handshake <= 1;
             arready_o <= 0;
         end
