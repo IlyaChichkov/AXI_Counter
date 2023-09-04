@@ -44,10 +44,10 @@ module s_axi_reg(
     input  logic             arvalid_i,
     output logic             arready_o,
     //   Data
-    output logic   [3:0]      rid_i,
-    output logic   [31:0]     rdata_i,
-    output logic   [3:0]      rstrb_i,
-    output logic              rlast_i,
+    output logic   [3:0]     rid_i,
+    output logic   [31:0]    rdata_i,
+    output logic   [3:0]     rstrb_i,
+    output logic             rlast_i,
     output logic             rvalid_i,
     input  logic             rready_i,
     // RESPONSE SIGNALS
@@ -63,6 +63,9 @@ logic [31:0]    reg_data_ff [0:7];
 
 logic [31:0]        awaddr_ff;
 logic [31:0]        wdata_ff;
+
+logic               has_addr;
+logic               has_data;
 
 logic               awready_en;
 logic               wready_en;
@@ -82,12 +85,16 @@ always_ff @( posedge clk or negedge areset ) begin
         if(awrite_handshake)
         begin
             awaddr_ff <= awaddr_i;
+            has_addr <= 1;
+            if(!has_data) begin 
+                wdata_ff <= wdata_i;
+                has_data <= 1;
+            end
         end
     end
 end
 
 // Write data reset
-
 generate
     for(genvar i = 0; i < 8; i++)
     begin
@@ -106,9 +113,11 @@ generate
     for(genvar i = 0; i < 4; i++)
     begin
         always_ff @( posedge clk ) begin
-            if(write_handshake)
+            if(write_handshake && has_addr)
             begin
-                if(wstrb_i[i]) reg_data_ff[awaddr_i][(8*i)+7:(8*i)] <= wdata_i[(8*i)+7:(8*i)];
+                if(wstrb_i[i]) reg_data_ff[awaddr_i][(8*i)+7:(8*i)] <= wdata_ff[(8*i)+7:(8*i)];
+                has_addr <= 0;
+                has_data <= 0;
             end
         end
     end
@@ -120,15 +129,23 @@ always_ff @( posedge clk or negedge areset ) begin
     begin
         // Reset
         wready_en <= 1;
+        wdata_ff <= '0;
     end
     else
     begin
         if(write_handshake)
         begin
-            wdata_ff <= wdata_i;
-            awready_en <= 1; // Got data -> ready HIGH  
-            wready_en <= 1; // Got data -> ready HIGH  
-            bvalid_en <= 1;
+            if(has_addr)
+            begin
+                awready_en <= 1; // Got data -> ready HIGH 
+                wready_en <= 0;
+                bvalid_en <= 1;
+            end
+            else
+            begin
+                wdata_ff <= wdata_i;
+                has_data <= 1;
+            end
         end
     end
 end
@@ -150,6 +167,7 @@ always_ff @( posedge clk or negedge areset ) begin
         if(bvalid_en && bready_i)
         begin
             bvalid_en <= 0;
+            wready_en <= 1;
         end
     end
 end
@@ -165,20 +183,15 @@ always_ff @( posedge clk or negedge areset ) begin
     if(!areset)
     begin
         // Reset
+        has_addr = '0;
+        has_data = '0;
     end
     else
     begin
         // Handshake write address and data
-
-
         if(awrite_handshake)
         begin
-            awready_en <= 0; // TODO: Нужно ли сохранять адрес?
-        end
-
-        if(write_handshake)
-        begin
-            wready_en <= 0;
+            awready_en <= 0;
         end
     end
 end
