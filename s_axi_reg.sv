@@ -62,6 +62,7 @@ logic [31:0]    reg_data_ff [0:7];
 /* Module signals */
 
 logic [31:0]        awaddr_ff;
+logic [31:0]        wdata_ff;
 
 logic               awready_en;
 logic               wready_en;
@@ -124,6 +125,7 @@ always_ff @( posedge clk or negedge areset ) begin
     begin
         if(write_handshake)
         begin
+            wdata_ff <= wdata_i;
             awready_en <= 1; // Got data -> ready HIGH  
             wready_en <= 1; // Got data -> ready HIGH  
             bvalid_en <= 1;
