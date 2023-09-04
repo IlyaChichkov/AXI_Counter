@@ -64,6 +64,9 @@ logic [31:0]    reg_data_ff [0:7];
 logic [31:0]        awaddr_ff;
 logic [31:0]        wdata_ff;
 
+logic [31:0]        araddr_ff;
+logic [31:0]        rdata_ff;
+
 logic               has_addr;
 logic               has_data;
 
@@ -174,9 +177,56 @@ end
 
 logic awrite_handshake;
 logic write_handshake;
+logic aread_handshake;
 
 assign awrite_handshake =  awvalid_i && awready_o;
 assign write_handshake = wvalid_i && wready_o;
+
+// Read data
+always_ff @( posedge clk or negedge areset ) begin
+    if(!areset)
+    begin
+        // Reset
+        arready_o <= '1;
+        aread_handshake <= '0;
+
+        rdata_ff <= '0;
+        araddr_ff <= '0;
+        
+        rid_o <= '0;
+        rlast_o <= '0;
+        rvalid_o <= '0;
+        rstrb_o <= '1;
+    end
+    else
+    begin
+        if(aread_handshake)
+        begin
+            if(rready_i)
+            begin
+                arready_o <= 1;
+                rvalid_o <= 0;
+                aread_handshake <= 0;
+            end
+            else
+            begin
+                rvalid_o <= 1;
+            end
+        end
+        // Check incoming address if valid
+        if(arvalid_i)
+        begin
+            // TODO: arid_i
+            araddr_ff <= araddr_i;
+            // TODO: strb
+            rdata_ff <= reg_data_ff[araddr_i];
+            aread_handshake <= 1;
+            arready_o <= 0;
+        end
+    end
+end
+
+assign rdata_o = rdata_ff;
 
 // Handshake
 always_ff @( posedge clk or negedge areset ) begin
