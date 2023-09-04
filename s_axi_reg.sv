@@ -1,25 +1,3 @@
-`timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 08/31/2023 11:15:56 AM
-// Design Name: 
-// Module Name: s_axi_reg
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
-
 module s_axi_reg(
     // GLOBAL SIGNALS 
     input               clk,        
@@ -192,7 +170,7 @@ always_ff @( posedge clk or negedge areset ) begin
 
         rdata_ff <= '0;
         araddr_ff <= '0;
-        
+
         rid_o <= '0;
         rlast_o <= '0;
         rvalid_o <= '0;
