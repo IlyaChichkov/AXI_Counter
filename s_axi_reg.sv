@@ -52,6 +52,10 @@ logic               awready_en;
 logic               wready_en;
 logic               bvalid_en;
 
+logic               awrite_handshake;
+logic               write_handshake;
+logic               aread_handshake;
+
 /* Functional methods */
 
 // Write address
@@ -75,6 +79,7 @@ always_ff @( posedge clk or negedge areset ) begin
     end
 end
 
+assign awrite_handshake = awvalid_i && awready_o;
 // Write data reset
 generate
     for(genvar i = 0; i < 8; i++)
@@ -153,11 +158,6 @@ always_ff @( posedge clk or negedge areset ) begin
     end
 end
 
-logic awrite_handshake;
-logic write_handshake;
-logic aread_handshake;
-
-assign awrite_handshake =  awvalid_i && awready_o;
 assign write_handshake = wvalid_i && wready_o;
 
 // Read data
