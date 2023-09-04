@@ -67,7 +67,7 @@ always_ff @( posedge clk or negedge areset ) begin
     end
     else
     begin
-        if(awrite_handshake)
+        if(awrite_handshake && !has_addr)
         begin
             awaddr_ff <= awaddr_i;
             has_addr <= 1;
