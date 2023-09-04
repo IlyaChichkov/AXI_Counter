@@ -119,7 +119,7 @@ always_ff @( posedge clk or negedge areset ) begin
     end
     else
     begin
-        if(write_handshake)
+        if(write_handshake && !has_data)
         begin
             if(has_addr)
             begin
