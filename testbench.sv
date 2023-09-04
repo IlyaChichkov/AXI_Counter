@@ -47,15 +47,21 @@ logic   [31:0]     awaddr_i;
 logic              awvalid_i;
 logic              awready_o;
 
-logic   [31:0]     wdata_i;
-logic [3:0]        wstrb_i;
-logic              wvalid_i;
-logic              wready_o;
+logic [31:0]        wdata_i;
+logic [3:0]         wstrb_i;
+logic               wvalid_i;
+logic               wready_o;
 
-logic  [3:0]       bid_o;
-logic  [1:0]       bresp_o;
-logic              bvalid_o;
-logic              bready_i;
+logic [3:0]         bid_o;
+logic [1:0]         bresp_o;
+logic               bvalid_o;
+logic               bready_i;
+
+logic [3:0]         arid_i;
+logic [31:0]        araddr_i;
+logic               arvalid_i;
+
+logic               rready_i;
 
 s_axi_reg slave(
     .clk            (clk),
@@ -70,6 +76,10 @@ s_axi_reg slave(
     .wready_o       (wready_o),
     .bresp_o        (bresp_o),
     .bvalid_o       (bvalid_o),
+    .arid_i         (arid_i),
+    .araddr_i       (araddr_i),
+    .arvalid_i      (arvalid_i),
+    .rready_i       (rready_i),
     .bready_i       (bready_i)
 );
 
@@ -82,6 +92,10 @@ task reset();
     awvalid_i = 0;
     wstrb_i = 0;
     wvalid_i = 0;
+    arid_i = 0;
+    araddr_i = 0;
+    arvalid_i = 0;
+    rready_i = 0;
     #20;
 endtask
 
