@@ -75,6 +75,7 @@ always_ff @( posedge clk or negedge areset ) begin
                 wdata_ff <= wdata_i;
                 has_data <= 1;
             end
+            awready_en <= 0;
         end
     end
 end
@@ -99,11 +100,13 @@ generate
     for(genvar i = 0; i < 4; i++)
     begin
         always_ff @( posedge clk ) begin
-            if(write_handshake && has_addr)
+            if(has_data && has_addr)
             begin
                 if(wstrb_i[i]) BRAM[awaddr_i][(8*i)+7:(8*i)] <= wdata_ff[(8*i)+7:(8*i)];
                 has_addr <= 0;
                 has_data <= 0;
+                wready_en <= 1;
+                bvalid_en <= 1;
             end
         end
     end
@@ -124,12 +127,11 @@ always_ff @( posedge clk or negedge areset ) begin
             if(has_addr)
             begin
                 awready_en <= 1; // Got data -> ready HIGH 
-                wready_en <= 0;
-                bvalid_en <= 1;
             end
             else
             begin
                 wdata_ff <= wdata_i;
+                wready_en <= 0;
                 has_data <= 1;
             end
         end
@@ -144,7 +146,7 @@ assign bvalid_o  = bvalid_en ? 1 : 0;
 always_ff @( posedge clk or negedge areset ) begin
     if(!areset)
     begin
-        bvalid_en <= 1;
+        bvalid_en <= '0;
         bid_o <= '0;
         bresp_o <= '0;
     end
@@ -154,6 +156,7 @@ always_ff @( posedge clk or negedge areset ) begin
         begin
             bvalid_en <= 0;
             wready_en <= 1;
+            awready_en <= 1;
         end
     end
 end
@@ -217,10 +220,12 @@ always_ff @( posedge clk or negedge areset ) begin
     else
     begin
         // Handshake write address and data
+        /*
         if(awrite_handshake)
         begin
             awready_en <= 0;
         end
+        */
     end
 end
 
