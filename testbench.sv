@@ -40,6 +40,8 @@ initial begin
     s_write_data();
     reset();
     s_write_data_before_addr();
+
+    m_read_data(1);
 end
 
 logic   [3:0]      awid_i;
@@ -60,6 +62,8 @@ logic               bready_i;
 logic [3:0]         arid_i;
 logic [31:0]        araddr_i;
 logic               arvalid_i;
+logic               rvalid_o;
+logic               arready_o;
 
 logic               rready_i;
 
@@ -80,7 +84,9 @@ s_axi_reg slave(
     .araddr_i       (araddr_i),
     .arvalid_i      (arvalid_i),
     .rready_i       (rready_i),
-    .bready_i       (bready_i)
+    .bready_i       (bready_i),
+    .arready_o      (arready_o),
+    .rvalid_o       (rvalid_o)
 );
 
 task reset();
@@ -149,7 +155,7 @@ task s_write_data();
     end while(!awready_o); 
     awvalid_i = '0;
 
-    wstrb_i = 4'b1010;
+    wstrb_i = 4'b1111;
     wdata_i = 32'hABCDEFAC;
     #10;
     wvalid_i = '1;
@@ -167,6 +173,41 @@ task s_write_data();
     bready_i = '1;
     #20;
     bready_i = '0;
+endtask
+
+
+/*
+
+logic [3:0]         arid_i;
+logic [31:0]        araddr_i;
+logic               arvalid_i;
+
+logic               rready_i;
+*/
+
+task m_read_data(input int addr);
+    areset = 1;
+    #20;
+    araddr_i = addr;
+    rready_i = '0;
+    #7
+    arvalid_i = '1;
+    
+    do begin
+        @(posedge clk);
+    end while(arready_o); 
+    arvalid_i = '0;
+    
+    #10;
+
+    do begin
+        @(posedge clk);
+    end while(!rvalid_o); 
+    
+    #20;
+    rready_i = '1;
+    #20;
+    rready_i = '0;
 endtask
 
 endmodule
