@@ -82,7 +82,8 @@ always_ff @( posedge clk or negedge areset ) begin
 end
 
 assign awrite_handshake = awvalid_i && awready_o;
-// Write data reset
+
+// Write data
 generate
     for(genvar i = 0; i < 8; i++)
     begin
@@ -91,23 +92,20 @@ generate
             begin
                 BRAM[i] <= 32'b0;
             end
-        end
-    end
-endgenerate
-
-
-// Write data
-generate
-    for(genvar i = 0; i < 4; i++)
-    begin
-        always_ff @( posedge clk ) begin
-            if(has_data && has_addr)
+            else
             begin
-                if(wstrb_i[i]) BRAM[awaddr_i][(8*i)+7:(8*i)] <= wdata_ff[(8*i)+7:(8*i)];
-                has_addr <= 0;
-                has_data <= 0;
-                wready_en <= 1;
-                bvalid_en <= 1;
+                if(has_data && has_addr && awaddr_i == i)
+                begin
+                    if(wstrb_i[0] == 1) BRAM[i][7:0] <= wdata_ff[7:0];
+                    if(wstrb_i[1] == 1) BRAM[i][(8*1)+7:(8*1)] <= wdata_ff[(8*1)+7:(8*1)];
+                    if(wstrb_i[2] == 1) BRAM[i][(8*2)+7:(8*2)] <= wdata_ff[(8*2)+7:(8*2)];
+                    if(wstrb_i[3] == 1) BRAM[i][(8*3)+7:(8*3)] <= wdata_ff[(8*3)+7:(8*3)];
+
+                    has_addr <= 0;
+                    has_data <= 0;
+                    wready_en <= 1;
+                    bvalid_en <= 1;
+                end
             end
         end
     end
