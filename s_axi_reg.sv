@@ -138,9 +138,9 @@ always_ff @( posedge clk or negedge areset ) begin
     end
 end
 
-assign awready_o = awready_en ? 1 : 0;
-assign wready_o  = wready_en ? 1 : 0;
-assign bvalid_o  = bvalid_en ? 1 : 0;
+assign awready_o = awready_en;
+assign wready_o  = wready_en;
+assign bvalid_o  = bvalid_en;
 
 // Response valid
 always_ff @( posedge clk or negedge areset ) begin
