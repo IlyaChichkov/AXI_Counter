@@ -62,6 +62,7 @@ logic               aread_handshake;
 always_ff @( posedge clk or negedge areset ) begin
     if(!areset)
     begin
+        has_addr = '0;
         awready_en <= 1;
         awaddr_ff <= '0;
     end
@@ -117,6 +118,7 @@ always_ff @( posedge clk or negedge areset ) begin
     if(!areset)
     begin
         // Reset
+        has_data = '0;
         wready_en <= 1;
         wdata_ff <= '0;
     end
@@ -208,26 +210,5 @@ always_ff @( posedge clk or negedge areset ) begin
 end
 
 assign rdata_o = rdata_ff;
-
-// Handshake
-always_ff @( posedge clk or negedge areset ) begin
-    if(!areset)
-    begin
-        // Reset
-        has_addr = '0;
-        has_data = '0;
-    end
-    else
-    begin
-        // Handshake write address and data
-        /*
-        if(awrite_handshake)
-        begin
-            awready_en <= 0;
-        end
-        */
-    end
-end
-
 
 endmodule
