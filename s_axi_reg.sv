@@ -1,5 +1,5 @@
 module s_axi_reg #(
-    parameter BRAM_WIDTH = 8;
+    parameter BRAM_QUANTITY = 8;
 )(
     // GLOBAL SIGNALS 
     input               clk,        
@@ -37,7 +37,7 @@ module s_axi_reg #(
     input  logic             bready_i
     );
 
-logic [31:0]    BRAM [0:7];
+logic [31:0]    BRAM [0 : BRAM_QUANTITY - 1];
 
 /* Module signals */
 
