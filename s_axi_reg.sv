@@ -207,6 +207,7 @@ always_ff @( posedge clk or negedge areset ) begin
                 // TODO: arid_i
                 araddr_ff <= araddr_i;
                 // TODO: strb
+                // TODO: Добавить модуль CRC32
                 rdata_ff <= BRAM[araddr_i];
                 aread_handshake <= 1;
                 arready_o <= 0;
