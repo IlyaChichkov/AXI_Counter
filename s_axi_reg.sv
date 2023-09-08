@@ -72,7 +72,7 @@ always_ff @( posedge clk or negedge areset ) begin
     begin
         if(awrite_handshake && !has_addr)
         begin
-            if(awaddr_i < BRAM_WIDTH && awaddr_i >= 0)
+            if(awaddr_i < BRAM_QUANTITY && awaddr_i >= 0)
             begin
                 awaddr_ff <= awaddr_i;
                 has_addr <= 1;
@@ -202,7 +202,7 @@ always_ff @( posedge clk or negedge areset ) begin
         // Check incoming address if valid
         if(arvalid_i)
         begin
-            if(araddr_i < BRAM_WIDTH && araddr_i >= 0)
+            if(araddr_i < BRAM_QUANTITY && araddr_i >= 0)
             begin
                 // TODO: arid_i
                 araddr_ff <= araddr_i;
