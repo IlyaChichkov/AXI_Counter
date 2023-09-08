@@ -1,4 +1,6 @@
-module s_axi_reg(
+module s_axi_reg #(
+    parameter BRAM_WIDTH = 8;
+)(
     // GLOBAL SIGNALS 
     input               clk,        
     input               areset,
@@ -70,13 +72,16 @@ always_ff @( posedge clk or negedge areset ) begin
     begin
         if(awrite_handshake && !has_addr)
         begin
-            awaddr_ff <= awaddr_i;
-            has_addr <= 1;
-            if(!has_data) begin 
-                wdata_ff <= wdata_i;
-                has_data <= 1;
+            if(awaddr_i < BRAM_WIDTH && awaddr_i >= 0)
+            begin
+                awaddr_ff <= awaddr_i;
+                has_addr <= 1;
+                if(!has_data) begin 
+                    wdata_ff <= wdata_i;
+                    has_data <= 1;
+                end
+                awready_en <= 0;
             end
-            awready_en <= 0;
         end
     end
 end
@@ -197,12 +202,15 @@ always_ff @( posedge clk or negedge areset ) begin
         // Check incoming address if valid
         if(arvalid_i)
         begin
-            // TODO: arid_i
-            araddr_ff <= araddr_i;
-            // TODO: strb
-            rdata_ff <= BRAM[araddr_i];
-            aread_handshake <= 1;
-            arready_o <= 0;
+            if(araddr_i < BRAM_WIDTH && araddr_i >= 0)
+            begin
+                // TODO: arid_i
+                araddr_ff <= araddr_i;
+                // TODO: strb
+                rdata_ff <= BRAM[araddr_i];
+                aread_handshake <= 1;
+                arready_o <= 0;
+            end
         end
     end
 end
