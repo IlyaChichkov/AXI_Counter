@@ -1,5 +1,5 @@
 module s_axi_reg #(
-    parameter BRAM_QUANTITY = 8;
+    parameter BRAM_QUANTITY = 8
 )(
     // GLOBAL SIGNALS 
     input               clk,        
