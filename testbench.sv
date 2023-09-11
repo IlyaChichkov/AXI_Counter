@@ -39,11 +39,35 @@ initial begin
     reset();
     write_data(32'hC2CCEE2E);
     uncheck_vdata();
+
     write_data(32'hA3DDDD3F);
     uncheck_vdata();
+
+    write_addr(32'd0);
+    wait_waddr_ready();
+    wait_response_ready();
+
+    write_data(32'hC2AAEE2A);
+    uncheck_vdata();
+
     write_addr(32'd1);
     wait_waddr_ready();
     wait_response_ready();
+
+    write_data(32'h7778111A);
+    uncheck_vdata();
+
+    write_addr(32'd2);
+    wait_waddr_ready();
+    wait_response_ready();
+
+    write_data(32'hFFE418689);
+    uncheck_vdata();
+
+    write_addr(32'd3);
+    wait_waddr_ready();
+    wait_response_ready();
+    /*
     write_addr(32'd2);
     wait_waddr_ready();
     write_addr(32'd3);
@@ -53,6 +77,7 @@ initial begin
     write_data(32'hF19F4125);
     uncheck_vdata();
     write_addr(32'd4);
+    */
 
     m_read_data(1);
 end
