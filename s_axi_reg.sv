@@ -2,273 +2,238 @@ module s_axi_reg #(
     parameter DATA_WIDTH = 32,
     parameter ADDR_WIDTH = 32,
     parameter BRAM_QUANTITY = 7
-)(
+) (
     // GLOBAL SIGNALS 
-    input                               clk,        
-    input                               areset,
+    input                           clk,
+    input                           areset,
     // WRITE SIGNALS
     //   Address
-    input  logic [3:0]                  awid_i,
-    input  logic [ADDR_WIDTH - 1:0]     awaddr_i,
-    input  logic                        awvalid_i,
-    output logic                        awready_o,
+    input  logic [             3:0] awid_i,
+    input  logic [ADDR_WIDTH - 1:0] awaddr_i,
+    input  logic                    awvalid_i,
+    output logic                    awready_o,
     //   Data
-    input  logic [3:0]                  wid_i,
-    input  logic [DATA_WIDTH - 1:0]     wdata_i,
-    input  logic [3:0]                  wstrb_i,
-    input  logic                        wlast_i,
-    input  logic                        wvalid_i,
-    output logic                        wready_o,
+    input  logic [             3:0] wid_i,
+    input  logic [DATA_WIDTH - 1:0] wdata_i,
+    input  logic [             3:0] wstrb_i,
+    input  logic                    wlast_i,
+    input  logic                    wvalid_i,
+    output logic                    wready_o,
     // READ SIGNALS
     //   Address
-    input  logic [3:0]                  arid_i,
-    input  logic [ADDR_WIDTH - 1:0]     araddr_i,
-    input  logic                        arvalid_i,
-    output logic                        arready_o,
+    input  logic [             3:0] arid_i,
+    input  logic [ADDR_WIDTH - 1:0] araddr_i,
+    input  logic                    arvalid_i,
+    output logic                    arready_o,
     //   Data
-    output logic   [3:0]                rid_o,
-    output logic   [DATA_WIDTH - 1:0]   rdata_o,
-    output logic   [3:0]                rstrb_o,
-    output logic                        rlast_o,
-    output logic                        rvalid_o,
-    input  logic                        rready_i,
+    output logic [             3:0] rid_o,
+    output logic [DATA_WIDTH - 1:0] rdata_o,
+    output logic [             3:0] rstrb_o,
+    output logic                    rlast_o,
+    output logic                    rvalid_o,
+    input  logic                    rready_i,
     // RESPONSE SIGNALS
-    output logic [3:0]                  bid_o,
-    output logic [1:0]                  bresp_o,
-    output logic                        bvalid_o,
-    input  logic                        bready_i
-    );
-
-logic [DATA_WIDTH - 1:0]    BRAM [0 : BRAM_QUANTITY - 1];
-
-/* Module signals */
-
-logic [ADDR_WIDTH - 1:0]        awaddr_ff;
-logic [DATA_WIDTH - 1:0]        wdata_ff;
-
-logic [ADDR_WIDTH - 1:0]        araddr_ff;
-logic [DATA_WIDTH - 1:0]        rdata_ff;
-
-logic                           has_addr;
-logic                           has_data;
-
-logic                           awready_en;
-logic                           wready_en;
-logic                           bvalid_en;
-
-logic                           awrite_handshake;
-logic                           write_handshake;
-logic                           aread_handshake;
-
-logic                           crc_enable;
-logic                           crc_valid_i;
-logic [31:0]                    crc_counter;
-logic                           crc_ready;
-logic [DATA_WIDTH - 1:0]        crc_data_i;
-logic [DATA_WIDTH - 1:0]        crc_data_o;
-logic [DATA_WIDTH - 1:0]        crc_result;
-
-/* Functional methods */
-
-// Write address
-always_ff @( posedge clk or negedge areset ) begin
-    if(!areset)
-    begin
-        has_addr = '0;
-        awready_en <= 1;
-        awaddr_ff <= '0;
-    end
-    else
-    begin
-        if(awrite_handshake && !has_addr)
-        begin
-            if(awaddr_i < BRAM_QUANTITY && awaddr_i >= 0)
-            begin
-                awaddr_ff <= awaddr_i;
-                has_addr <= 1;
-                if(!has_data) begin 
-                    wdata_ff <= wdata_i;
-                    has_data <= 1;
-                end
-                awready_en <= 0;
-            end
-        end
-    end
-end
-
-assign awrite_handshake = awvalid_i && awready_o;
-
-// Write data
-generate
-    for(genvar i = 0; i < 8; i++)
-    begin
-        always_ff @( posedge clk or negedge areset ) begin
-            if(!areset)
-            begin
-                BRAM[i] <= 32'b0;
-            end
-            else
-            begin
-                if(has_data && has_addr && awaddr_i == i)
-                begin
-                    if(wstrb_i[0] == 1) BRAM[i][7:0] <= wdata_ff[7:0];
-                    if(wstrb_i[1] == 1) BRAM[i][(8*1)+7:(8*1)] <= wdata_ff[(8*1)+7:(8*1)];
-                    if(wstrb_i[2] == 1) BRAM[i][(8*2)+7:(8*2)] <= wdata_ff[(8*2)+7:(8*2)];
-                    if(wstrb_i[3] == 1) BRAM[i][(8*3)+7:(8*3)] <= wdata_ff[(8*3)+7:(8*3)];
-
-                    has_addr <= 0;
-                    has_data <= 0;
-                    wready_en <= 1;
-                    bvalid_en <= 1;
-                end
-            end
-        end
-    end
-endgenerate
-
-// Write data
-always_ff @( posedge clk or negedge areset ) begin
-    if(!areset)
-    begin
-        // Reset
-        has_data = '0;
-        wready_en <= 1;
-        wdata_ff <= '0;
-    end
-    else
-    begin
-        if(write_handshake && !has_data)
-        begin
-            if(has_addr)
-            begin
-                awready_en <= 1; // Got data -> ready HIGH 
-            end
-            else
-            begin
-                wdata_ff <= wdata_i;
-                wready_en <= 0;
-                has_data <= 1;
-            end
-        end
-    end
-end
-
-assign awready_o = awready_en;
-assign wready_o  = wready_en;
-assign bvalid_o  = bvalid_en;
-
-// Response valid
-always_ff @( posedge clk or negedge areset ) begin
-    if(!areset)
-    begin
-        bvalid_en <= '0;
-        bid_o <= '0;
-        bresp_o <= '0;
-    end
-    else
-    begin
-        if(bvalid_en && bready_i)
-        begin
-            bvalid_en <= 0;
-            wready_en <= 1;
-            awready_en <= 1;
-        end
-    end
-end
-
-assign write_handshake = wvalid_i && wready_o;
-
-crc32_module crc32(
-    .clk(clk),
-    .areset(areset),
-    .valid_i(crc_valid_i),
-    .data_i(crc_data_i),
-    .crc_o(crc_data_o)
+    output logic [             3:0] bid_o,
+    output logic [             1:0] bresp_o,
+    output logic                    bvalid_o,
+    input  logic                    bready_i
 );
 
-always_ff @(posedge clk or negedge areset) begin
-    if(!areset || !crc_enable)
-    begin
-        // Reset
-        crc_valid_i <= '0;
-        crc_ready <= '0;
-        crc_counter <= '0;
-        crc_result <= '0;
-        crc_data_i <= '0;
-    end
-    else
-    begin
-        if(crc_counter < BRAM_QUANTITY) begin
-            crc_valid_i <= 1;
-            crc_ready <= 0;
-            crc_data_i <= BRAM[crc_counter];
-            crc_counter <= crc_counter + 1;
+  logic [DATA_WIDTH - 1:0] BRAM             [0 : BRAM_QUANTITY - 1];
+
+  /* Module signals */
+
+  logic [ADDR_WIDTH - 1:0] awaddr_ff;
+  logic [DATA_WIDTH - 1:0] wdata_ff;
+
+  logic [ADDR_WIDTH - 1:0] araddr_ff;
+  logic [DATA_WIDTH - 1:0] rdata_ff;
+
+  logic                    has_addr;
+  logic                    has_data;
+
+  logic                    awready_en;
+  logic                    wready_en;
+  logic                    bvalid_en;
+
+  logic                    awrite_handshake;
+  logic                    write_handshake;
+  logic                    aread_handshake;
+
+  logic                    crc_enable;
+  logic                    crc_valid_i;
+  logic [            31:0] crc_counter;
+  logic                    crc_ready;
+  logic [DATA_WIDTH - 1:0] crc_data_i;
+  logic [DATA_WIDTH - 1:0] crc_data_o;
+  logic [DATA_WIDTH - 1:0] crc_result;
+
+  /* Functional methods */
+
+  // Write address
+  always_ff @(posedge clk or negedge areset) begin
+    if (!areset) begin
+      has_addr = '0;
+      awready_en <= 1;
+      awaddr_ff  <= '0;
+    end else begin
+      if (awrite_handshake && !has_addr) begin
+        if (awaddr_i < BRAM_QUANTITY && awaddr_i >= 0) begin
+          awaddr_ff <= awaddr_i;
+          has_addr  <= 1;
+          if (!has_data) begin
+            wdata_ff <= wdata_i;
+            has_data <= 1;
+          end
+          awready_en <= 0;
         end
-        else
-        begin
-            crc_result <= crc_data_o;
-            crc_ready <= 1;
-            crc_counter <= 0;
-            crc_valid_i <= 0;
-        end
+      end
     end
-end
+  end
 
-// Read data
-always_ff @( posedge clk or negedge areset ) begin
-    if(!areset)
-    begin
-        // Reset
-        arready_o <= '1;
-        aread_handshake <= '0;
+  assign awrite_handshake = awvalid_i && awready_o;
 
-        rdata_ff <= '0;
-        araddr_ff <= '0;
+  // Write data
+  generate
+    for (genvar i = 0; i < 8; i++) begin
+      always_ff @(posedge clk or negedge areset) begin
+        if (!areset) begin
+          BRAM[i] <= 32'b0;
+        end else begin
+          if (has_data && has_addr && awaddr_i == i) begin
+            if (wstrb_i[0] == 1) BRAM[i][7:0] <= wdata_ff[7:0];
+            if (wstrb_i[1] == 1) BRAM[i][(8*1)+7:(8*1)] <= wdata_ff[(8*1)+7:(8*1)];
+            if (wstrb_i[2] == 1) BRAM[i][(8*2)+7:(8*2)] <= wdata_ff[(8*2)+7:(8*2)];
+            if (wstrb_i[3] == 1) BRAM[i][(8*3)+7:(8*3)] <= wdata_ff[(8*3)+7:(8*3)];
 
-        rid_o <= '0;
-        rlast_o <= '0;
-        rvalid_o <= '0;
-        rstrb_o <= '1;
-
-        crc_enable <= '0;
-    end
-    else
-    begin
-        if(aread_handshake)
-        begin
-            if(rready_i)
-            begin
-                arready_o <= 1;
-                rvalid_o <= 0;
-                aread_handshake <= 0;
-            end
-            else
-            begin
-                if(crc_ready) begin
-                    rdata_ff <= crc_result;
-                    rvalid_o <= 1;
-                    crc_enable <= 0;
-                end
-            end
+            has_addr  <= 0;
+            has_data  <= 0;
+            wready_en <= 1;
+            bvalid_en <= 1;
+          end
         end
-        // Check incoming address if valid
-        if(arvalid_i)
-        begin
-            if(araddr_i < BRAM_QUANTITY && araddr_i >= 0)
-            begin
-                // TODO: arid_i
-                araddr_ff <= araddr_i;
-                // TODO: strb
-                crc_enable <= 1;
-
-                rdata_ff <= BRAM[araddr_i];
-                aread_handshake <= 1;
-                arready_o <= 0;
-            end
-        end
+      end
     end
-end
+  endgenerate
 
-assign rdata_o = rdata_ff;
+  // Write data
+  always_ff @(posedge clk or negedge areset) begin
+    if (!areset) begin
+      // Reset
+      has_data = '0;
+      wready_en <= 1;
+      wdata_ff  <= '0;
+    end else begin
+      if (write_handshake && !has_data) begin
+        if (has_addr) begin
+          awready_en <= 1;  // Got data -> ready HIGH 
+        end else begin
+          wdata_ff  <= wdata_i;
+          wready_en <= 0;
+          has_data  <= 1;
+        end
+      end
+    end
+  end
+
+  assign awready_o = awready_en;
+  assign wready_o  = wready_en;
+  assign bvalid_o  = bvalid_en;
+
+  // Response valid
+  always_ff @(posedge clk or negedge areset) begin
+    if (!areset) begin
+      bvalid_en <= '0;
+      bid_o <= '0;
+      bresp_o <= '0;
+    end else begin
+      if (bvalid_en && bready_i) begin
+        bvalid_en  <= 0;
+        wready_en  <= 1;
+        awready_en <= 1;
+      end
+    end
+  end
+
+  assign write_handshake = wvalid_i && wready_o;
+
+  crc32_module crc32 (
+      .clk(clk),
+      .areset(areset),
+      .valid_i(crc_valid_i),
+      .data_i(crc_data_i),
+      .crc_o(crc_data_o)
+  );
+
+  always_ff @(posedge clk or negedge areset) begin
+    if (!areset || !crc_enable) begin
+      // Reset
+      crc_valid_i <= '0;
+      crc_ready   <= '0;
+      crc_counter <= '0;
+      crc_result  <= '0;
+      crc_data_i  <= '0;
+    end else begin
+      if (crc_counter < BRAM_QUANTITY) begin
+        crc_valid_i <= 1;
+        crc_ready   <= 0;
+        crc_data_i  <= BRAM[crc_counter];
+        crc_counter <= crc_counter + 1;
+      end else begin
+        crc_result  <= crc_data_o;
+        crc_ready   <= 1;
+        crc_counter <= 0;
+        crc_valid_i <= 0;
+      end
+    end
+  end
+
+  // Read data
+  always_ff @(posedge clk or negedge areset) begin
+    if (!areset) begin
+      // Reset
+      arready_o <= '1;
+      aread_handshake <= '0;
+
+      rdata_ff <= '0;
+      araddr_ff <= '0;
+
+      rid_o <= '0;
+      rlast_o <= '0;
+      rvalid_o <= '0;
+      rstrb_o <= '1;
+
+      crc_enable <= '0;
+    end else begin
+      if (aread_handshake) begin
+        if (rready_i) begin
+          arready_o <= 1;
+          rvalid_o <= 0;
+          aread_handshake <= 0;
+        end else begin
+          if (crc_ready) begin
+            rdata_ff   <= crc_result;
+            rvalid_o   <= 1;
+            crc_enable <= 0;
+          end
+        end
+      end
+      // Check incoming address if valid
+      if (arvalid_i) begin
+        if (araddr_i < BRAM_QUANTITY && araddr_i >= 0) begin
+          // TODO: arid_i
+          araddr_ff <= araddr_i;
+          // TODO: strb
+          crc_enable <= 1;
+
+          rdata_ff <= BRAM[araddr_i];
+          aread_handshake <= 1;
+          arready_o <= 0;
+        end
+      end
+    end
+  end
+
+  assign rdata_o = rdata_ff;
 
 endmodule
