@@ -1,24 +1,25 @@
 module crc32_module (
 	input   logic               clk,
 	input   logic               areset,
-	input   logic   [31:0]      data,
-	output  logic   [31:0]      crc
+	input   logic               valid_i,
+	input   logic   [31:0]      data_i,
+	output  logic   [31:0]      crc_o
 );
 
-logic [31:0] crc_next;
+logic [31:0] crc;
+assign crc_o = crc ^ data_i;
 
-always @(posedge clk)
-begin
-	if(!areset) begin
-		crc <= '0;
+always @(posedge clk or negedge areset) begin
+	if (!areset) begin
+		crc <= 32'hFFFFFFFF;
+	end else begin
+		if(valid_i) begin
+			crc <= crc_o;
+		end
+		else begin
+			crc <= 32'hFFFFFFFF;
+		end
 	end
-	else begin
-		crc <= crc_next;
-	end
-end
-
-always_comb begin
-    crc_next = crc_next ^ data; // TODO: Реализовать алгоритм crc32
 end
 
 endmodule
