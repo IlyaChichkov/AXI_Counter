@@ -60,13 +60,7 @@ module s_axi_reg #(
   logic                    write_handshake;
   logic                    aread_handshake;
 
-  logic                    crc_enable;
-  logic                    crc_valid_i;
-  logic [            31:0] crc_counter;
-  logic                    crc_ready;
-  logic [DATA_WIDTH - 1:0] crc_data_i;
-  logic [DATA_WIDTH - 1:0] crc_data_o;
-  logic [DATA_WIDTH - 1:0] crc_result;
+  logic [DATA_WIDTH - 1:0] crc_result_comb;
 
   /* Functional methods */
 
@@ -157,35 +151,14 @@ module s_axi_reg #(
 
   assign write_handshake = wvalid_i && wready_o;
 
-  crc32_module crc32 (
-      .clk(clk),
-      .areset(areset),
-      .valid_i(crc_valid_i),
-      .data_i(crc_data_i),
-      .crc_o(crc_data_o)
-  );
-
-  always_ff @(posedge clk or negedge areset) begin
-    if (!areset || !crc_enable) begin
-      // Reset
-      crc_valid_i <= '0;
-      crc_ready   <= '0;
-      crc_counter <= '0;
-      crc_result  <= '0;
-      crc_data_i  <= '0;
-    end else begin
-      if (crc_counter < BRAM_QUANTITY) begin
-        crc_valid_i <= 1;
-        crc_ready   <= 0;
-        crc_data_i  <= BRAM[crc_counter];
-        crc_counter <= crc_counter + 1;
-      end else begin
-        crc_result  <= crc_data_o;
-        crc_ready   <= 1;
-        crc_counter <= 0;
-        crc_valid_i <= 0;
+  always_comb begin
+      logic [31:0] temp_xor = '1;
+      
+      for (int i = 0; i < BRAM_QUANTITY; i = i + 1) begin
+          temp_xor = temp_xor ^ BRAM[i];
       end
-    end
+      
+      crc_result_comb = temp_xor;
   end
 
   // Read data
@@ -202,8 +175,6 @@ module s_axi_reg #(
       rlast_o <= '0;
       rvalid_o <= '0;
       rstrb_o <= '1;
-
-      crc_enable <= '0;
     end else begin
       if (aread_handshake) begin
         if (rready_i) begin
@@ -211,11 +182,7 @@ module s_axi_reg #(
           rvalid_o <= 0;
           aread_handshake <= 0;
         end else begin
-          if (crc_ready) begin
-            rdata_ff   <= crc_result;
-            rvalid_o   <= 1;
-            crc_enable <= 0;
-          end
+          rvalid_o   <= 1;
         end
       end
       // Check incoming address if valid
@@ -224,9 +191,8 @@ module s_axi_reg #(
           // TODO: arid_i
           araddr_ff <= araddr_i;
           // TODO: strb
-          crc_enable <= 1;
 
-          rdata_ff <= BRAM[araddr_i];
+          rdata_ff <= crc_result_comb;
           aread_handshake <= 1;
           arready_o <= 0;
         end
