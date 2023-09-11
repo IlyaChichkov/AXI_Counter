@@ -1,70 +1,72 @@
 module s_axi_reg #(
+    parameter DATA_WIDTH = 32,
+    parameter ADDR_WIDTH = 32,
     parameter BRAM_QUANTITY = 7
 )(
     // GLOBAL SIGNALS 
-    input               clk,        
-    input               areset,
+    input                               clk,        
+    input                               areset,
     // WRITE SIGNALS
     //   Address
-    input  logic [3:0]       awid_i,
-    input  logic [31:0]      awaddr_i,
-    input  logic             awvalid_i,
-    output logic             awready_o,
+    input  logic [3:0]                  awid_i,
+    input  logic [ADDR_WIDTH - 1:0]     awaddr_i,
+    input  logic                        awvalid_i,
+    output logic                        awready_o,
     //   Data
-    input  logic [3:0]       wid_i,
-    input  logic [31:0]      wdata_i,
-    input  logic [3:0]       wstrb_i,
-    input  logic             wlast_i,
-    input  logic             wvalid_i,
-    output logic             wready_o,
+    input  logic [3:0]                  wid_i,
+    input  logic [DATA_WIDTH - 1:0]     wdata_i,
+    input  logic [3:0]                  wstrb_i,
+    input  logic                        wlast_i,
+    input  logic                        wvalid_i,
+    output logic                        wready_o,
     // READ SIGNALS
     //   Address
-    input  logic [3:0]       arid_i,
-    input  logic [31:0]      araddr_i,
-    input  logic             arvalid_i,
-    output logic             arready_o,
+    input  logic [3:0]                  arid_i,
+    input  logic [ADDR_WIDTH - 1:0]     araddr_i,
+    input  logic                        arvalid_i,
+    output logic                        arready_o,
     //   Data
-    output logic   [3:0]     rid_o,
-    output logic   [31:0]    rdata_o,
-    output logic   [3:0]     rstrb_o,
-    output logic             rlast_o,
-    output logic             rvalid_o,
-    input  logic             rready_i,
+    output logic   [3:0]                rid_o,
+    output logic   [DATA_WIDTH - 1:0]   rdata_o,
+    output logic   [3:0]                rstrb_o,
+    output logic                        rlast_o,
+    output logic                        rvalid_o,
+    input  logic                        rready_i,
     // RESPONSE SIGNALS
-    output logic [3:0]       bid_o,
-    output logic [1:0]       bresp_o,
-    output logic             bvalid_o,
-    input  logic             bready_i
+    output logic [3:0]                  bid_o,
+    output logic [1:0]                  bresp_o,
+    output logic                        bvalid_o,
+    input  logic                        bready_i
     );
 
-logic [31:0]    BRAM [0 : BRAM_QUANTITY - 1];
+logic [DATA_WIDTH - 1:0]    BRAM [0 : BRAM_QUANTITY - 1];
 
 /* Module signals */
 
-logic [31:0]        awaddr_ff;
-logic [31:0]        wdata_ff;
+logic [ADDR_WIDTH - 1:0]        awaddr_ff;
+logic [DATA_WIDTH - 1:0]        wdata_ff;
 
-logic [31:0]        araddr_ff;
-logic [31:0]        rdata_ff;
+logic [ADDR_WIDTH - 1:0]        araddr_ff;
+logic [DATA_WIDTH - 1:0]        rdata_ff;
 
-logic               has_addr;
-logic               has_data;
+logic                           has_addr;
+logic                           has_data;
 
-logic               awready_en;
-logic               wready_en;
-logic               bvalid_en;
+logic                           awready_en;
+logic                           wready_en;
+logic                           bvalid_en;
 
-logic               awrite_handshake;
-logic               write_handshake;
-logic               aread_handshake;
+logic                           awrite_handshake;
+logic                           write_handshake;
+logic                           aread_handshake;
 
-logic               crc_enable;
-logic               crc_valid_i;
-logic [31:0]        crc_counter;
-logic               crc_ready;
-logic [31:0]        crc_data_i;
-logic [31:0]        crc_data_o;
-logic [31:0]        crc_result;
+logic                           crc_enable;
+logic                           crc_valid_i;
+logic [31:0]                    crc_counter;
+logic                           crc_ready;
+logic [DATA_WIDTH - 1:0]        crc_data_i;
+logic [DATA_WIDTH - 1:0]        crc_data_o;
+logic [DATA_WIDTH - 1:0]        crc_result;
 
 /* Functional methods */
 
