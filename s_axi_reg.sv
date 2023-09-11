@@ -1,5 +1,5 @@
 module s_axi_reg #(
-    parameter BRAM_QUANTITY = 8
+    parameter BRAM_QUANTITY = 7
 )(
     // GLOBAL SIGNALS 
     input               clk,        
@@ -57,6 +57,14 @@ logic               bvalid_en;
 logic               awrite_handshake;
 logic               write_handshake;
 logic               aread_handshake;
+
+logic               crc_enable;
+logic               crc_valid_i;
+logic [31:0]        crc_counter;
+logic               crc_ready;
+logic [31:0]        crc_data_i;
+logic [31:0]        crc_data_o;
+logic [31:0]        crc_result;
 
 /* Functional methods */
 
@@ -168,6 +176,42 @@ end
 
 assign write_handshake = wvalid_i && wready_o;
 
+crc32_module crc32(
+    .clk(clk),
+    .areset(areset),
+    .valid_i(crc_valid_i),
+    .data_i(crc_data_i),
+    .crc_o(crc_data_o)
+);
+
+always_ff @(posedge clk or negedge areset) begin
+    if(!areset || !crc_enable)
+    begin
+        // Reset
+        crc_valid_i <= '0;
+        crc_ready <= '0;
+        crc_counter <= '0;
+        crc_result <= '0;
+        crc_data_i <= '0;
+    end
+    else
+    begin
+        if(crc_counter < BRAM_QUANTITY) begin
+            crc_valid_i <= 1;
+            crc_ready <= 0;
+            crc_data_i <= BRAM[crc_counter];
+            crc_counter <= crc_counter + 1;
+        end
+        else
+        begin
+            crc_result <= crc_data_o;
+            crc_ready <= 1;
+            crc_counter <= 0;
+            crc_valid_i <= 0;
+        end
+    end
+end
+
 // Read data
 always_ff @( posedge clk or negedge areset ) begin
     if(!areset)
@@ -183,6 +227,8 @@ always_ff @( posedge clk or negedge areset ) begin
         rlast_o <= '0;
         rvalid_o <= '0;
         rstrb_o <= '1;
+
+        crc_enable <= '0;
     end
     else
     begin
@@ -196,7 +242,11 @@ always_ff @( posedge clk or negedge areset ) begin
             end
             else
             begin
-                rvalid_o <= 1;
+                if(crc_ready) begin
+                    rdata_ff <= crc_result;
+                    rvalid_o <= 1;
+                    crc_enable <= 0;
+                end
             end
         end
         // Check incoming address if valid
@@ -207,7 +257,8 @@ always_ff @( posedge clk or negedge areset ) begin
                 // TODO: arid_i
                 araddr_ff <= araddr_i;
                 // TODO: strb
-                // TODO: Добавить модуль CRC32
+                crc_enable <= 1;
+
                 rdata_ff <= BRAM[araddr_i];
                 aread_handshake <= 1;
                 arready_o <= 0;
