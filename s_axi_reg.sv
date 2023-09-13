@@ -59,7 +59,7 @@ module s_axi_reg #(
   logic                    write_handshake;
   logic                    aread_handshake;
 
-  logic [DATA_WIDTH - 1:0] crc_result_comb;
+  logic [DATA_WIDTH - 1:0] crc_result;
 
   /* Functional methods */
 
@@ -172,32 +172,30 @@ module s_axi_reg #(
 
   assign write_handshake = wvalid_i && wready_o;
 
-  logic [31:0] temp_xor;
+  assign crc_result = BRAM[0] ^ BRAM[1] ^ BRAM[2] ^ BRAM[3] ^ BRAM[4] ^ BRAM[5] ^ BRAM[6] ^ BRAM[7];
 
-  always_comb begin
-    /*
-    for (int i = 0; i < BRAM_QUANTITY; i = i + 1) begin
-        temp_xor = temp_xor ^ BRAM[i];
-    end
-    */
-    crc_result_comb = areset ? temp_xor ^ BRAM[0] ^ BRAM[1] ^ BRAM[2] ^ BRAM[3] ^ BRAM[4] ^ BRAM[5] ^ BRAM[6] ^ BRAM[7] : '0;
-  end
-
+  assign araddr_ff = araddr_i[7:0];
   // Read data
   always_ff @(posedge clk or negedge areset) begin
     if (!areset) begin
       // Reset
       arready_o <= '1;
-      temp_xor = '1;
       aread_handshake <= '0;
 
       rdata_ff <= '0;
-      araddr_ff <= '0;
 
       rid_o <= '0;
       rlast_o <= '0;
       rvalid_o <= '0;
     end else begin
+      // Check incoming address if valid
+      if (arvalid_i) begin
+        rdata_ff <= araddr_ff < BRAM_QUANTITY ? BRAM[araddr_ff] : crc_result;
+        aread_handshake <= 1;
+        arready_o <= 0;
+      end
+      
+      // Read ready ...
       if (aread_handshake) begin
         if (rready_i) begin
           arready_o <= 1;
@@ -207,18 +205,7 @@ module s_axi_reg #(
           rvalid_o   <= 1;
         end
       end
-      // Check incoming address if valid
-      if (arvalid_i) begin
-        if (araddr_i < BRAM_QUANTITY && araddr_i >= 0) begin
-          // TODO: arid_i
-          araddr_ff <= araddr_i;
-          // TODO: strb
-
-          rdata_ff <= crc_result_comb;
-          aread_handshake <= 1;
-          arready_o <= 0;
-        end
-      end
+      
     end
   end
 
