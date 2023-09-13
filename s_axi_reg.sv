@@ -1,7 +1,7 @@
 module s_axi_reg #(
     parameter DATA_WIDTH = 32,
     parameter ADDR_WIDTH = 32,
-    parameter BRAM_QUANTITY = 7
+    parameter BRAM_QUANTITY = 8
 ) (
     // GLOBAL SIGNALS 
     input                           clk,
@@ -28,7 +28,6 @@ module s_axi_reg #(
     //   Data
     output logic [             3:0] rid_o,
     output logic [DATA_WIDTH - 1:0] rdata_o,
-    output logic [             3:0] rstrb_o,
     output logic                    rlast_o,
     output logic                    rvalid_o,
     input  logic                    rready_i,
@@ -72,19 +71,28 @@ module s_axi_reg #(
       awaddr_ff  <= '0;
     end else begin
       if (awrite_handshake && !has_addr) begin
-        if (awaddr_i < BRAM_QUANTITY && awaddr_i >= 0) begin
+        if (correct_addr) begin
           awaddr_ff <= awaddr_i;
           has_addr  <= 1;
-          if (!has_data) begin
-            wdata_ff <= wdata_i;
-            has_data <= 1;
-          end
           awready_en <= 0;
         end
+      end
+
+      if (has_data && has_addr) begin
+        has_addr  <= 0;
+      end
+
+      if (bvalid_en && bready_i) begin
+        awready_en <= 1;
+      end
+
+      if (write_handshake && !has_data && has_addr) begin
+        awready_en <= 1;  // Got data -> ready HIGH 
       end
     end
   end
 
+  assign correct_addr = awaddr_i < BRAM_QUANTITY && awaddr_i >= 0 ? 1 : 0;
   assign awrite_handshake = awvalid_i && awready_o;
 
   // Write data
@@ -99,11 +107,6 @@ module s_axi_reg #(
             if (wstrb_i[1] == 1) BRAM[i][(8*1)+7:(8*1)] <= wdata_ff[(8*1)+7:(8*1)];
             if (wstrb_i[2] == 1) BRAM[i][(8*2)+7:(8*2)] <= wdata_ff[(8*2)+7:(8*2)];
             if (wstrb_i[3] == 1) BRAM[i][(8*3)+7:(8*3)] <= wdata_ff[(8*3)+7:(8*3)];
-
-            has_addr  <= 0;
-            has_data  <= 0;
-            wready_en <= 1;
-            bvalid_en <= 1;
           end
         end
       end
@@ -118,14 +121,30 @@ module s_axi_reg #(
       wready_en <= 1;
       wdata_ff  <= '0;
     end else begin
+      if (awrite_handshake && !has_addr) begin
+        if (correct_addr) begin
+          if (!has_data) begin
+            wdata_ff <= wdata_i;
+            has_data <= 1;
+          end
+        end
+      end
+
       if (write_handshake && !has_data) begin
-        if (has_addr) begin
-          awready_en <= 1;  // Got data -> ready HIGH 
-        end else begin
+        if (!has_addr) begin
           wdata_ff  <= wdata_i;
           wready_en <= 0;
           has_data  <= 1;
         end
+      end
+
+      if (has_data && has_addr) begin
+        has_data  <= 0;
+        wready_en <= 1;
+      end
+
+      if (bvalid_en && bready_i) begin
+        wready_en  <= 1;
       end
     end
   end
@@ -143,22 +162,25 @@ module s_axi_reg #(
     end else begin
       if (bvalid_en && bready_i) begin
         bvalid_en  <= 0;
-        wready_en  <= 1;
-        awready_en <= 1;
+      end
+
+      if (has_data && has_addr) begin
+        bvalid_en <= 1;
       end
     end
   end
 
   assign write_handshake = wvalid_i && wready_o;
 
+  logic [31:0] temp_xor;
+
   always_comb begin
-      logic [31:0] temp_xor = '1;
-      
-      for (int i = 0; i < BRAM_QUANTITY; i = i + 1) begin
-          temp_xor = temp_xor ^ BRAM[i];
-      end
-      
-      crc_result_comb = temp_xor;
+    /*
+    for (int i = 0; i < BRAM_QUANTITY; i = i + 1) begin
+        temp_xor = temp_xor ^ BRAM[i];
+    end
+    */
+    crc_result_comb = areset ? temp_xor ^ BRAM[0] ^ BRAM[1] ^ BRAM[2] ^ BRAM[3] ^ BRAM[4] ^ BRAM[5] ^ BRAM[6] ^ BRAM[7] : '0;
   end
 
   // Read data
@@ -166,6 +188,7 @@ module s_axi_reg #(
     if (!areset) begin
       // Reset
       arready_o <= '1;
+      temp_xor = '1;
       aread_handshake <= '0;
 
       rdata_ff <= '0;
@@ -174,7 +197,6 @@ module s_axi_reg #(
       rid_o <= '0;
       rlast_o <= '0;
       rvalid_o <= '0;
-      rstrb_o <= '1;
     end else begin
       if (aread_handshake) begin
         if (rready_i) begin
