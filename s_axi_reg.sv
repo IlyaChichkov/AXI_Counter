@@ -63,7 +63,10 @@ module s_axi_reg #(
 
   /* Functional methods */
 
+  assign awaddr_ff = awaddr_i[7:0] >> 2;
+  assign araddr_ff = araddr_i[7:0] >> 2;
   // Write address
+
   always_ff @(posedge clk or negedge areset) begin
     if (~areset) begin
       has_addr = '0;
@@ -168,7 +171,6 @@ module s_axi_reg #(
 
   assign crc_result = BRAM[0] ^ BRAM[1] ^ BRAM[2] ^ BRAM[3] ^ BRAM[4] ^ BRAM[5] ^ BRAM[6] ^ BRAM[7];
 
-  assign araddr_ff = araddr_i[7:0];
   // Read data
   always_ff @(posedge clk or negedge areset) begin
     if (~areset) begin
@@ -183,21 +185,18 @@ module s_axi_reg #(
       rvalid_o <= '0;
     end else begin
       // Check incoming address if valid
-      if (arvalid_i) begin
+      if (arvalid_i && arready_o) begin
         rdata_ff <= araddr_ff < BRAM_QUANTITY ? BRAM[araddr_ff] : crc_result;
         aread_handshake <= 1;
+        rvalid_o   <= 1;
         arready_o <= 0;
       end
       
-      // Read ready ...
-      if (aread_handshake) begin
-        if (rready_i) begin
-          arready_o <= 1;
-          rvalid_o <= 0;
-          aread_handshake <= 0;
-        end else begin
-          rvalid_o   <= 1;
-        end
+      // Read ready
+      if (rready_i && rvalid_o) begin
+        arready_o <= 1;
+        rvalid_o <= 0;
+        aread_handshake <= 0;
       end
       
     end
