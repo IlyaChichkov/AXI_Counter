@@ -97,6 +97,7 @@ logic [1:0]         bresp_o;
 logic               bvalid_o;
 logic               bready_i;
 
+logic [31:0]        rdata_o;
 logic [3:0]         arid_i;
 logic [31:0]        araddr_i;
 logic               arvalid_i;
@@ -124,7 +125,8 @@ s_axi_reg slave(
     .rready_i       (rready_i),
     .bready_i       (bready_i),
     .arready_o      (arready_o),
-    .rvalid_o       (rvalid_o)
+    .rvalid_o       (rvalid_o),
+    .rdata_o        (rdata_o)
 );
 
 task reset();
@@ -215,11 +217,44 @@ task m_read_data(input int addr);
     do begin
         @(posedge clk);
     end while(!rvalid_o); 
-    
+
+    $display("val: %h", rdata_o);
+
     #20;
     rready_i = '1;
     #20;
     rready_i = '0;
+endtask
+
+
+task m_read_all();
+
+    for (int i = 0; i<9; i=i+1) begin
+        
+        #20;
+        araddr_i = {'h34c0, i << 2};
+        rready_i = '0;
+        #7
+        arvalid_i = '1;
+        
+        do begin
+            @(posedge clk);
+        end while(arready_o); 
+        arvalid_i = '0;
+        
+        #10;
+
+        do begin
+            @(posedge clk);
+        end while(!rvalid_o); 
+
+        $display("Read Value: %h", rdata_o);
+
+        #20;
+        rready_i = '1;
+        #20;
+        rready_i = '0;
+    end
 endtask
 
 endmodule
