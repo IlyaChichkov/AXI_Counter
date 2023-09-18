@@ -70,11 +70,8 @@ module s_axi_reg #(
       awready_en <= 1;
     end else begin
       if (awrite_handshake && !has_addr) begin
-        if (correct_addr) begin
-          awaddr_ff <= awaddr_i;
-          has_addr  <= 1;
-          awready_en <= 0;
-        end
+        has_addr  <= 1;
+        awready_en <= 0;
       end
 
       if (has_data && has_addr) begin
@@ -91,7 +88,7 @@ module s_axi_reg #(
     end
   end
 
-  assign correct_addr = awaddr_i < BRAM_QUANTITY && awaddr_i >= 0 ? 1 : 0;
+  assign correct_addr = awaddr_ff < BRAM_QUANTITY && awaddr_ff >= 0 ? 1 : 0;
   assign awrite_handshake = awvalid_i && awready_o;
 
   // Write data
@@ -101,7 +98,7 @@ module s_axi_reg #(
         if (~areset) begin
           BRAM[i] <= 32'b0;
         end else begin
-          if (has_data && has_addr && awaddr_i == i) begin
+          if (has_data && has_addr && awaddr_ff == i && correct_addr) begin
             if (wstrb_i[0] == 1) BRAM[i][7:0] <= wdata_ff[7:0];
             if (wstrb_i[1] == 1) BRAM[i][(8*1)+7:(8*1)] <= wdata_ff[(8*1)+7:(8*1)];
             if (wstrb_i[2] == 1) BRAM[i][(8*2)+7:(8*2)] <= wdata_ff[(8*2)+7:(8*2)];
@@ -121,11 +118,9 @@ module s_axi_reg #(
       wdata_ff  <= '0;
     end else begin
       if (awrite_handshake && !has_addr) begin
-        if (correct_addr) begin
-          if (!has_data) begin
-            wdata_ff <= wdata_i;
-            has_data <= 1;
-          end
+        if (!has_data) begin
+          wdata_ff <= wdata_i;
+          has_data <= 1;
         end
       end
 
