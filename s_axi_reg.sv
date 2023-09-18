@@ -65,10 +65,9 @@ module s_axi_reg #(
 
   // Write address
   always_ff @(posedge clk or negedge areset) begin
-    if (!areset) begin
+    if (~areset) begin
       has_addr = '0;
       awready_en <= 1;
-      awaddr_ff  <= '0;
     end else begin
       if (awrite_handshake && !has_addr) begin
         if (correct_addr) begin
@@ -99,7 +98,7 @@ module s_axi_reg #(
   generate
     for (genvar i = 0; i < 8; i++) begin
       always_ff @(posedge clk or negedge areset) begin
-        if (!areset) begin
+        if (~areset) begin
           BRAM[i] <= 32'b0;
         end else begin
           if (has_data && has_addr && awaddr_i == i) begin
@@ -115,7 +114,7 @@ module s_axi_reg #(
 
   // Write data
   always_ff @(posedge clk or negedge areset) begin
-    if (!areset) begin
+    if (~areset) begin
       // Reset
       has_data = '0;
       wready_en <= 1;
@@ -155,7 +154,7 @@ module s_axi_reg #(
 
   // Response valid
   always_ff @(posedge clk or negedge areset) begin
-    if (!areset) begin
+    if (~areset) begin
       bvalid_en <= '0;
       bid_o <= '0;
       bresp_o <= '0;
@@ -177,7 +176,7 @@ module s_axi_reg #(
   assign araddr_ff = araddr_i[7:0];
   // Read data
   always_ff @(posedge clk or negedge areset) begin
-    if (!areset) begin
+    if (~areset) begin
       // Reset
       arready_o <= '1;
       aread_handshake <= '0;
