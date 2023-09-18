@@ -43,28 +43,28 @@ initial begin
     write_data(32'hA3DDDD3F);
     uncheck_vdata();
 
-    write_addr(32'hA3DD0000);
+    write_addr(32'hA3DD0020);
     wait_waddr_ready();
     wait_response_ready();
 
     write_data(32'hC2AAEE2A);
     uncheck_vdata();
 
-    write_addr(32'hA3DD0001);
+    write_addr(32'hA3DD0004);
     wait_waddr_ready();
     wait_response_ready();
 
     write_data(32'h7778111A);
     uncheck_vdata();
 
-    write_addr(32'hA3DD0002);
+    write_addr(32'hA3DD0008);
     wait_waddr_ready();
     wait_response_ready();
 
     write_data(32'hFFE418689);
     uncheck_vdata();
 
-    write_addr(32'hA3DD0003);
+    write_addr(32'hA3DD000C);
     wait_waddr_ready();
     wait_response_ready();
     /*
@@ -79,7 +79,9 @@ initial begin
     write_addr(32'd4);
     */
 
-    m_read_data(32'hA3DD0001);
+    m_read_all();
+
+    // m_read_data(32'hA3DD0004);
 end
 
 logic   [3:0]      awid_i;
