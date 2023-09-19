@@ -38,7 +38,7 @@ module s_axi_reg #(
     input  logic                    bready_i
 );
 
-  logic [DATA_WIDTH - 1:0] BRAM             [0 : BRAM_QUANTITY - 1];
+  logic [DATA_WIDTH - 1:0] BRAM     [0 : BRAM_QUANTITY - 1];
 
   /* Module signals */
 
