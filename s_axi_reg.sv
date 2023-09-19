@@ -7,8 +7,19 @@ module s_axi_reg #(
     input                           clk,
     input                           areset,
     // WRITE SIGNALS
-    //   Address
+    //   Burst
     input  logic [             3:0] awid_i,
+    // Number of data transfers per burst
+    input  logic [             3:0] awlen_i,
+    // Burst transaction data size (2 - 32-bit)
+    input  logic [             2:0] awsize_i,
+    // Burst type
+    // 0'b00    fixed
+    // 0'b01    incrementing
+    // 0'b10    wrap
+    // 0'b11    -
+    input  logic [             1:0] awburst_i,
+    //   Address
     input  logic [ADDR_WIDTH - 1:0] awaddr_i,
     input  logic                    awvalid_i,
     output logic                    awready_o,
