@@ -92,6 +92,7 @@ module s_axi_reg #(
   end
 
   assign correct_addr = awaddr_ff < BRAM_QUANTITY && awaddr_ff >= 0 ? 1 : 0;
+  assign bresp_o = correct_addr == 1 ? 2'b00 : 2'b10;
   assign awrite_handshake = awvalid_i && awready_o;
 
   // Write data to registers
@@ -155,7 +156,6 @@ module s_axi_reg #(
     if (~areset) begin
       bvalid_en <= '0;
       bid_o <= '0;
-      bresp_o <= '0;
     end else begin
       if (bvalid_en && bready_i) begin
         bvalid_en  <= 0;
