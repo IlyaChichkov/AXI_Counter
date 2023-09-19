@@ -7,8 +7,19 @@ module s_axi_reg #(
     input                           clk,
     input                           areset,
     // WRITE SIGNALS
-    //   Address
+    //   Burst
     input  logic [             3:0] awid_i,
+    // Number of data transfers per burst
+    input  logic [             3:0] awlen_i,
+    // Burst transaction data size (2 - 32-bit)
+    input  logic [             2:0] awsize_i,
+    // Burst type
+    // 0'b00    fixed
+    // 0'b01    incrementing
+    // 0'b10    wrap
+    // 0'b11    -
+    input  logic [             1:0] awburst_i,
+    //   Address
     input  logic [ADDR_WIDTH - 1:0] awaddr_i,
     input  logic                    awvalid_i,
     output logic                    awready_o,
@@ -59,14 +70,36 @@ module s_axi_reg #(
   logic                    write_handshake;
   logic                    aread_handshake;
 
+  logic [             3:0] awid_ff;
+  logic [             3:0] awlen_ff;
+  logic [             2:0] awsize_ff;
+  logic [             1:0] awburst_ff;
+
+  logic [             3:0] burst_counter;
+
   logic [DATA_WIDTH - 1:0] crc_result;
 
   /* Functional methods */
 
   assign awaddr_ff = awaddr_i[7:0] >> 2;
   assign araddr_ff = araddr_i[7:0] >> 2;
-  // Write address
 
+  // Burst counter
+  always_ff @(posedge clk or negedge areset) begin
+    if (~areset) begin
+      burst_counter <= '0;
+    end else begin
+      if (awrite_handshake && !has_addr) begin
+        burst_counter <= '0;
+      end
+    
+      if (has_data && has_addr) begin
+        burst_counter <= burst_counter + 1;
+      end
+    end
+  end
+
+  // Write address
   always_ff @(posedge clk or negedge areset) begin
     if (~areset) begin
       has_addr = '0;
@@ -75,9 +108,14 @@ module s_axi_reg #(
       if (awrite_handshake && !has_addr) begin
         has_addr  <= 1;
         awready_en <= 0;
+
+        awburst_ff <= awburst_i;
+        awsize_ff <= awsize_i;
+        awlen_ff <= awlen_i;
+        awid_ff <= awid_i;
       end
 
-      if (has_data && has_addr) begin
+      if (wlast_i) begin
         has_addr  <= 0;
       end
 
