@@ -7,19 +7,8 @@ module s_axi_reg #(
     input                           clk,
     input                           areset,
     // WRITE SIGNALS
-    //   Burst
-    input  logic [             3:0] awid_i,
-    // Number of data transfers per burst
-    input  logic [             3:0] awlen_i,
-    // Burst transaction data size (2 - 32-bit)
-    input  logic [             2:0] awsize_i,
-    // Burst type
-    // 0'b00    fixed
-    // 0'b01    incrementing
-    // 0'b10    wrap
-    // 0'b11    -
-    input  logic [             1:0] awburst_i,
     //   Address
+    input  logic [             3:0] awid_i,
     input  logic [ADDR_WIDTH - 1:0] awaddr_i,
     input  logic                    awvalid_i,
     output logic                    awready_o,
@@ -105,7 +94,7 @@ module s_axi_reg #(
   assign correct_addr = awaddr_ff < BRAM_QUANTITY && awaddr_ff >= 0 ? 1 : 0;
   assign awrite_handshake = awvalid_i && awready_o;
 
-  // Write data
+  // Write data to registers
   generate
     for (genvar i = 0; i < 8; i++) begin
       always_ff @(posedge clk or negedge areset) begin
@@ -123,7 +112,7 @@ module s_axi_reg #(
     end
   endgenerate
 
-  // Write data
+  // Write data signals
   always_ff @(posedge clk or negedge areset) begin
     if (~areset) begin
       // Reset
