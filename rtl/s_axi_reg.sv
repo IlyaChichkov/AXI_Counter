@@ -84,6 +84,8 @@ module s_axi_reg #(
   assign awaddr_ff = awaddr_i[7:0] >> 2;
   assign araddr_ff = araddr_i[7:0] >> 2;
 
+  logic can_write_data;
+  assign can_write_data = has_data && has_addr;
   // Burst counter
   always_ff @(posedge clk or negedge areset) begin
     if (~areset) begin
@@ -93,8 +95,52 @@ module s_axi_reg #(
         burst_counter <= '0;
       end
     
-      if (has_data && has_addr) begin
+      if (can_write_data) begin
         burst_counter <= burst_counter + 1;
+      end
+    end
+  end
+
+  // Burst
+  always_ff @(posedge clk or negedge areset) begin
+    if (~areset) begin
+        awburst_ff <= '0;
+        awsize_ff <= '0;
+        awlen_ff <= '0;
+        awid_ff <= '0;
+    end else begin
+      if (awrite_handshake && !has_addr) begin
+        awburst_ff <= awburst_i;
+        awsize_ff <= awsize_i;
+        awlen_ff <= awlen_i;
+        awid_ff <= awid_i;
+      end
+
+      if(wready_en && !wlast_i) begin
+        burst_counter <= burst_counter + 1;
+
+        case (awburst_ff)
+          2'b00: begin
+            // Addr not changed
+          end
+          2'b01: begin
+            // Incr
+            awaddr_ff <= awaddr_ff + 1;
+          end
+          2'b10: begin
+            // Wrap
+            if(awaddr_ff + 1 > 7) begin
+              awaddr_ff <= 0;
+            end
+            else
+            begin
+              awaddr_ff <= awaddr_ff + 1;
+            end
+          end
+          default: begin
+            
+          end
+        endcase
       end
     end
   end
@@ -108,11 +154,6 @@ module s_axi_reg #(
       if (awrite_handshake && !has_addr) begin
         has_addr  <= 1;
         awready_en <= 0;
-
-        awburst_ff <= awburst_i;
-        awsize_ff <= awsize_i;
-        awlen_ff <= awlen_i;
-        awid_ff <= awid_i;
       end
 
       if (wlast_i) begin
@@ -123,9 +164,14 @@ module s_axi_reg #(
         awready_en <= 1;
       end
 
+      // TODO: Признак готовности принять новый адрес
+      // В данный момент когда есть адрес но нет данных
+       
+      /* ???
       if (write_handshake && !has_data && has_addr) begin
         awready_en <= 1;  // Got data -> ready HIGH 
       end
+      */
     end
   end
 
@@ -140,7 +186,7 @@ module s_axi_reg #(
         if (~areset) begin
           BRAM[i] <= 32'b0;
         end else begin
-          if (has_data && has_addr && awaddr_ff == i && correct_addr) begin
+          if (can_write_data && awaddr_ff == i && correct_addr) begin
             if (wstrb_i[0] == 1) BRAM[i][7:0] <= wdata_ff[7:0];
             if (wstrb_i[1] == 1) BRAM[i][(8*1)+7:(8*1)] <= wdata_ff[(8*1)+7:(8*1)];
             if (wstrb_i[2] == 1) BRAM[i][(8*2)+7:(8*2)] <= wdata_ff[(8*2)+7:(8*2)];
@@ -174,7 +220,7 @@ module s_axi_reg #(
         end
       end
 
-      if (has_data && has_addr) begin
+      if (can_write_data) begin
         has_data  <= 0;
         wready_en <= 1;
       end
@@ -199,7 +245,7 @@ module s_axi_reg #(
         bvalid_en  <= 0;
       end
 
-      if (has_data && has_addr) begin
+      if (can_write_data && wlast_i) begin
         bvalid_en <= 1;
       end
     end
