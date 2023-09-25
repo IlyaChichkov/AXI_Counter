@@ -62,8 +62,6 @@ module s_axi_reg #(
   logic                    write_handshake;
   logic                    aread_handshake;
 
-  logic [DATA_WIDTH - 1:0] crc_result;
-
   /* Functional methods */
 
   assign awaddr_ff = awaddr_i[7:0] >> 2;
@@ -97,8 +95,9 @@ module s_axi_reg #(
     end
   end
 
-  assign correct_addr = awaddr_ff < BRAM_QUANTITY && awaddr_ff >= 0 ? 1 : 0;
-  assign bresp_o = correct_addr == 1 ? 2'b00 : 2'b10;
+  assign waddr_correct = awaddr_ff < BRAM_QUANTITY && awaddr_ff >= 0 ? 1 : 0;
+  assign raddr_correct = araddr_ff < BRAM_QUANTITY && araddr_ff >= 0 ? 1 : 0;
+  assign bresp_o = waddr_correct == 1 ? 2'b00 : 2'b10;
   assign awrite_handshake = awvalid_i && awready_o;
 
   // Write data
@@ -108,7 +107,7 @@ module s_axi_reg #(
         if (~areset) begin
           BRAM[i] <= 32'b0;
         end else begin
-          if (can_write_data && awaddr_ff == i && correct_addr) begin
+          if (can_write_data && awaddr_ff == i && waddr_correct) begin
             if (wstrb_i[0] == 1) BRAM[i][7:0] <= wdata_ff[7:0];
             if (wstrb_i[1] == 1) BRAM[i][(8*1)+7:(8*1)] <= wdata_ff[(8*1)+7:(8*1)];
             if (wstrb_i[2] == 1) BRAM[i][(8*2)+7:(8*2)] <= wdata_ff[(8*2)+7:(8*2)];
@@ -175,8 +174,6 @@ module s_axi_reg #(
 
   assign write_handshake = wvalid_i && wready_o;
 
-  assign crc_result = BRAM[0] ^ BRAM[1] ^ BRAM[2] ^ BRAM[3] ^ BRAM[4] ^ BRAM[5] ^ BRAM[6] ^ BRAM[7];
-
   // Read data
   always_ff @(posedge clk or negedge areset) begin
     if (~areset) begin
@@ -192,7 +189,7 @@ module s_axi_reg #(
     end else begin
       // Check incoming address if valid
       if (arvalid_i && arready_o) begin
-        rdata_ff <= araddr_ff < BRAM_QUANTITY ? BRAM[araddr_ff] : crc_result;
+        rdata_ff <= raddr_correct == 1 ? BRAM[araddr_ff] : '0;
         aread_handshake <= 1;
         rvalid_o   <= 1;
         arready_o <= 0;
