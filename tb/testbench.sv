@@ -1,28 +1,10 @@
-`timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 08/31/2023 01:18:45 PM
-// Design Name: 
-// Module Name: testbench
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
+module testbench #(
+    parameter DATA_WIDTH = 32,
+    parameter ADDR_WIDTH = 32,
+    parameter BRAM_QUANTITY = 6
+)(
 
-
-module testbench(
-
-    );
+);
 
 logic clk;
 logic areset;
@@ -37,16 +19,9 @@ end
 
 initial begin
     reset();
-    write_data(32'hC2CCEE2E);
-    uncheck_vdata();
 
-    write_data(32'hA3DDDD3F);
-    uncheck_vdata();
-
-    write_addr(32'hA3DD0020);
-    wait_waddr_ready();
-    wait_response_ready();
-
+    // Write addr0
+    $display("Write addr0");
     write_data(32'hC2AAEE2A);
     uncheck_vdata();
 
@@ -54,35 +29,48 @@ initial begin
     wait_waddr_ready();
     wait_response_ready();
 
-    write_data(32'h7778111A);
+    // Write addr1
+    $display("Write addr1");
+    write_data(32'h43C10000);
     uncheck_vdata();
 
     write_addr(32'hA3DD0008);
     wait_waddr_ready();
     wait_response_ready();
+    
+    // Write incr
+    $display("Write incr");
+    write_data(32'h00000004);
+    uncheck_vdata();
 
-    write_data(32'hFFE418689);
+    write_addr(32'hA3DD0010);
+    wait_waddr_ready();
+    wait_response_ready();
+
+    // Write Length
+    $display("Write Length");
+    write_data(32'h00000001);
     uncheck_vdata();
 
     write_addr(32'hA3DD000C);
     wait_waddr_ready();
     wait_response_ready();
-    /*
-    write_addr(32'd2);
-    wait_waddr_ready();
-    write_addr(32'd3);
-    write_data(32'hA477772D);
-    uncheck_vdata();
-    wait_response_ready();
-    write_data(32'hF19F4125);
-    uncheck_vdata();
-    write_addr(32'd4);
-    */
 
+    // Write enable
+    $display("Write enable");
+    write_data(32'h00000001);
+    uncheck_vdata();
+
+    write_addr(32'hA3DD0000);
+    wait_waddr_ready();
+    wait_response_ready();
+
+    test_master_counter();
+    
     m_read_all();
 
-    // m_read_data(32'hA3DD0004);
 end
+
 
 logic   [3:0]      awid_i;
 logic   [31:0]     awaddr_i;
@@ -108,7 +96,70 @@ logic               arready_o;
 
 logic               rready_i;
 
-s_axi_reg slave(
+logic [             1:0] m_awburst_o;
+logic [            63:0] m_awaddr_o;
+logic                    m_awvalid_o;
+logic                    m_awready_i;
+logic [             3:0] m_wid_o;
+logic [DATA_WIDTH - 1:0] m_wdata_o;
+logic [             3:0] m_wstrb_o;
+logic                    m_wlast_o;
+logic                    m_wvalid_o;
+logic                    m_wready_i;
+logic [             3:0] m_bid_i;
+logic [             1:0] m_bresp_i;
+logic                    m_bvalid_i;
+logic                    m_bready_o;
+
+
+master_top #(
+    .DATA_WIDTH (DATA_WIDTH),
+    .ADDR_WIDTH (ADDR_WIDTH),
+    .BRAM_QUANTITY (BRAM_QUANTITY)
+) master
+(
+    .clk            (clk),
+    .areset         (areset),
+    .awid_i         (awid_i),
+    .awaddr_i       (awaddr_i),
+    .awvalid_i      (awvalid_i),
+    .awready_o      (awready_o),
+    .wdata_i        (wdata_i),
+    .wstrb_i        (wstrb_i),
+    .wvalid_i       (wvalid_i),
+    .wready_o       (wready_o),
+    .bresp_o        (bresp_o),
+    .bvalid_o       (bvalid_o),
+    .arid_i         (arid_i),
+    .araddr_i       (araddr_i),
+    .arvalid_i      (arvalid_i),
+    .rready_i       (rready_i),
+    .bready_i       (bready_i),
+    .arready_o      (arready_o),
+    .rvalid_o       (rvalid_o),
+    .rdata_o        (rdata_o),
+    .m_awburst_o    (m_awburst_o),
+    .m_awaddr_o     (m_awaddr_o),
+    .m_awvalid_o    (m_awvalid_o),
+    .m_awready_i    (m_awready_i),
+    .m_wid_o        (m_wid_o),
+    .m_wdata_o      (m_wdata_o),
+    .m_wstrb_o      (m_wstrb_o),
+    .m_wlast_o      (m_wlast_o),
+    .m_wvalid_o     (m_wvalid_o),
+    .m_wready_i     (m_wready_i),
+    .m_bid_i        (m_bid_i),
+    .m_bresp_i      (m_bresp_i),
+    .m_bvalid_i     (m_bvalid_i),
+    .m_bready_o     (m_bready_o)
+);
+/*
+axi_master_top #(
+    .DATA_WIDTH (DATA_WIDTH),
+    .ADDR_WIDTH (ADDR_WIDTH),
+    .BRAM_QUANTITY (BRAM_QUANTITY)
+) master
+(
     .clk            (clk),
     .areset         (areset),
     .awid_i         (awid_i),
@@ -129,7 +180,7 @@ s_axi_reg slave(
     .arready_o      (arready_o),
     .rvalid_o       (rvalid_o),
     .rdata_o        (rdata_o)
-);
+);*/
 
 task reset();
     #20;
@@ -144,6 +195,13 @@ task reset();
     araddr_i = 0;
     arvalid_i = 0;
     rready_i = 0;
+
+    m_bid_i = 0;
+  
+    m_wready_i = 0;
+    m_awready_i = 0;
+    m_bresp_i = 0;
+    m_bvalid_i = 0;
     #40;
     areset = 1;
     #20;
@@ -154,6 +212,7 @@ endtask
 task write_data(
     input logic [31:0]  data
     );
+    $display("Write data");
     wstrb_i = 4'b1111;
     wdata_i = data;
     #7;
@@ -163,9 +222,22 @@ endtask
 task write_addr(
     input logic [31:0] addr
     );
+    $display("Write addr");
     awaddr_i = addr;
     #7;
     awvalid_i = '1;
+endtask
+
+task test_master_counter();
+    $display("test master counter...");
+    #60;
+    m_awready_i = 1;
+    #60;
+    m_wready_i = 1;
+    #60;
+    m_bresp_i = 0;
+    m_bvalid_i = 1;
+    $display("done.");
 endtask
 
 task uncheck_vaddr();
@@ -179,6 +251,7 @@ task uncheck_vdata();
 endtask
 
 task wait_waddr_ready();
+    $display("Waiting write addr ready");
     do begin
         @(posedge clk);
     end while(!awready_o); 
@@ -186,6 +259,7 @@ task wait_waddr_ready();
 endtask
 
 task wait_wdata_ready();
+    $display("Waiting write data ready");
     do begin
         @(posedge clk);
     end while(!wready_o); 
@@ -193,6 +267,7 @@ task wait_wdata_ready();
 endtask
 
 task wait_response_ready();
+    $display("Waiting response ready");
     do begin
         @(posedge clk);
     end while(!bvalid_o); 
@@ -260,75 +335,3 @@ task m_read_all();
 endtask
 
 endmodule
-
-/*
-task s_write_data_before_addr();
-    #20;
-    areset = 1;
-    #20;
-
-    wstrb_i = 4'b1010;
-    wdata_i = 32'hEFDBCA54;
-    #20;
-    wvalid_i = '1;
-
-    awaddr_i = 32'b1;
-
-    #7
-    awvalid_i = '1;
-    
-    do begin
-        @(posedge clk);
-    end while(!awready_o); 
-    awvalid_i = '0;
-
-
-    do begin
-        @(posedge clk);
-    end while(!wready_o); 
-    wvalid_i = '0;
-
-
-    do begin
-        @(posedge clk);
-    end while(!bvalid_o); 
-    #5;
-    bready_i = '1;
-    #20;
-    bready_i = '0;
-endtask
-
-task s_write_data();
-    #20;
-    areset = 1;
-    #20;
-    awaddr_i = 32'b1;
-
-    #7
-    awvalid_i = '1;
-    
-    do begin
-        @(posedge clk);
-    end while(!awready_o); 
-    awvalid_i = '0;
-
-    wstrb_i = 4'b1111;
-    wdata_i = 32'hABCDEFAC;
-    #10;
-    wvalid_i = '1;
-
-    do begin
-        @(posedge clk);
-    end while(!wready_o); 
-    wvalid_i = '0;
-
-
-    do begin
-        @(posedge clk);
-    end while(!bvalid_o); 
-    #5;
-    bready_i = '1;
-    #20;
-    bready_i = '0;
-endtask
-*/
