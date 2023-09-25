@@ -4,22 +4,13 @@ module s_axi_reg #(
     parameter BRAM_QUANTITY = 8
 ) (
     // GLOBAL SIGNALS 
+    output logic  [DATA_WIDTH - 1:0] m_bram_o [0 : BRAM_QUANTITY - 1],
+
     input                           clk,
     input                           areset,
     // WRITE SIGNALS
-    //   Burst
-    input  logic [             3:0] awid_i,
-    // Number of data transfers per burst
-    input  logic [             3:0] awlen_i,
-    // Burst transaction data size (2 - 32-bit)
-    input  logic [             2:0] awsize_i,
-    // Burst type
-    // 0'b00    fixed
-    // 0'b01    incrementing
-    // 0'b10    wrap
-    // 0'b11    -
-    input  logic [             1:0] awburst_i,
     //   Address
+    input  logic [             3:0] awid_i,
     input  logic [ADDR_WIDTH - 1:0] awaddr_i,
     input  logic                    awvalid_i,
     output logic                    awready_o,
@@ -50,6 +41,7 @@ module s_axi_reg #(
 );
 
   logic [DATA_WIDTH - 1:0] BRAM     [0 : BRAM_QUANTITY - 1];
+  assign m_bram_o = BRAM;
 
   /* Module signals */
 
@@ -70,13 +62,6 @@ module s_axi_reg #(
   logic                    write_handshake;
   logic                    aread_handshake;
 
-  logic [             3:0] awid_ff;
-  logic [             3:0] awlen_ff;
-  logic [             2:0] awsize_ff;
-  logic [             1:0] awburst_ff;
-
-  logic [             3:0] burst_counter;
-
   logic [DATA_WIDTH - 1:0] crc_result;
 
   /* Functional methods */
@@ -86,66 +71,8 @@ module s_axi_reg #(
 
   logic can_write_data;
   assign can_write_data = has_data && has_addr;
-  // Burst counter
-  always_ff @(posedge clk or negedge areset) begin
-    if (~areset) begin
-      burst_counter <= '0;
-    end else begin
-      if (awrite_handshake && !has_addr) begin
-        burst_counter <= '0;
-      end
-    
-      if (can_write_data) begin
-        burst_counter <= burst_counter + 1;
-      end
-    end
-  end
-
-  // Burst
-  always_ff @(posedge clk or negedge areset) begin
-    if (~areset) begin
-        awburst_ff <= '0;
-        awsize_ff <= '0;
-        awlen_ff <= '0;
-        awid_ff <= '0;
-    end else begin
-      if (awrite_handshake && !has_addr) begin
-        awburst_ff <= awburst_i;
-        awsize_ff <= awsize_i;
-        awlen_ff <= awlen_i;
-        awid_ff <= awid_i;
-      end
-
-      if(wready_en && !wlast_i) begin
-        burst_counter <= burst_counter + 1;
-
-        case (awburst_ff)
-          2'b00: begin
-            // Addr not changed
-          end
-          2'b01: begin
-            // Incr
-            awaddr_ff <= awaddr_ff + 1;
-          end
-          2'b10: begin
-            // Wrap
-            if(awaddr_ff + 1 > 7) begin
-              awaddr_ff <= 0;
-            end
-            else
-            begin
-              awaddr_ff <= awaddr_ff + 1;
-            end
-          end
-          default: begin
-            
-          end
-        endcase
-      end
-    end
-  end
-
   // Write address
+
   always_ff @(posedge clk or negedge areset) begin
     if (~areset) begin
       has_addr = '0;
@@ -156,7 +83,7 @@ module s_axi_reg #(
         awready_en <= 0;
       end
 
-      if (wlast_i) begin
+      if (can_write_data) begin
         has_addr  <= 0;
       end
 
@@ -164,14 +91,9 @@ module s_axi_reg #(
         awready_en <= 1;
       end
 
-      // TODO: Признак готовности принять новый адрес
-      // В данный момент когда есть адрес но нет данных
-       
-      /* ???
       if (write_handshake && !has_data && has_addr) begin
         awready_en <= 1;  // Got data -> ready HIGH 
       end
-      */
     end
   end
 
@@ -179,9 +101,9 @@ module s_axi_reg #(
   assign bresp_o = correct_addr == 1 ? 2'b00 : 2'b10;
   assign awrite_handshake = awvalid_i && awready_o;
 
-  // Write data to registers
+  // Write data
   generate
-    for (genvar i = 0; i < 8; i++) begin
+    for (genvar i = 0; i < BRAM_QUANTITY; i++) begin
       always_ff @(posedge clk or negedge areset) begin
         if (~areset) begin
           BRAM[i] <= 32'b0;
@@ -197,7 +119,7 @@ module s_axi_reg #(
     end
   endgenerate
 
-  // Write data signals
+  // Write data
   always_ff @(posedge clk or negedge areset) begin
     if (~areset) begin
       // Reset
@@ -245,7 +167,7 @@ module s_axi_reg #(
         bvalid_en  <= 0;
       end
 
-      if (can_write_data && wlast_i) begin
+      if (can_write_data) begin
         bvalid_en <= 1;
       end
     end
