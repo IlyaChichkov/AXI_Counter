@@ -48,6 +48,11 @@ module m_axi_reg #(
   logic [ 2:0]             cnt_state_next; 
   logic [ 2:0]             cnt_state;
 
+  logic                    burst_cnt_en;
+  logic [31:0]             current_burst_cnt;
+  logic [31:0]             burst_len;
+  assign burst_len = BRAM[LENGTH];
+
   logic                    counter_en;
   logic [31:0]             counter_ff;
 
@@ -79,7 +84,13 @@ module m_axi_reg #(
           end
           INCR_VAL: begin
             if(BRAM[ENABLED]) begin
-              cnt_state_next <= WRITING_ADDR;
+              if(current_burst_cnt < burst_len) begin
+                cnt_state_next <= WRITING_DATA;
+              end
+              else
+              begin
+                cnt_state_next <= WRITING_ADDR;
+              end
             end
             else begin
               cnt_state_next <= IDLE;
@@ -108,7 +119,6 @@ module m_axi_reg #(
     end else begin
       if(cnt_state == INCR_VAL && counter_en) begin
         counter_ff <= counter_ff + BRAM[INCR_STEP];
-        counter_en <= 0;
       end
     end
   end
@@ -120,6 +130,9 @@ module m_axi_reg #(
     end else begin
       if(cnt_state == WRITING_ADDR) begin
         counter_en <= 1;
+      end
+      if(cnt_state == INCR_VAL) begin
+        counter_en <= 0;
       end
     end
   end
@@ -181,4 +194,61 @@ module m_axi_reg #(
   assign counter_status = cnt_state;
   assign awaddr_o = { BRAM[ADDR_W_0], BRAM[ADDR_W_1] };
 
+  // Burst
+  always_ff @(posedge clk or negedge areset) begin
+    if (~areset) begin
+      awburst_o <= 1;
+      awsize_o <= 'b101;
+    end else begin
+      
+    end
+  end
+
+  // Burst length
+  always_ff @(posedge clk or negedge areset) begin
+    if (~areset) begin
+      awlen_o <= 0;
+    end else begin
+      awlen_o <= burst_len;
+    end
+  end
+
+  // Burst last
+  always_ff @(posedge clk or negedge areset) begin
+    if (~areset) begin
+      wlast_o <= 0;
+    end else begin
+      if(current_burst_cnt >= burst_len) begin
+        wlast_o <= 1;
+      end
+    end
+  end
+
+  // Can add burst count
+  always_ff @(posedge clk or negedge areset) begin
+    if (~areset) begin
+      burst_cnt_en <= 0;
+    end else begin
+      if(cnt_state == WRITING_DATA) begin
+        burst_cnt_en <= 1;
+      end
+      if(cnt_state == INCR_STEP) begin
+        burst_cnt_en <= 0;
+      end
+    end
+  end
+
+  // Current burst count
+  always_ff @(posedge clk or negedge areset) begin
+    if (~areset) begin
+      current_burst_cnt <= 0;
+    end else begin
+      if(cnt_state == WRITING_ADDR) begin
+        current_burst_cnt <= 0;
+      end
+      if(cnt_state == INCR_STEP && burst_cnt_en) begin
+        current_burst_cnt <= current_burst_cnt + 1;
+      end
+    end
+  end
 endmodule
