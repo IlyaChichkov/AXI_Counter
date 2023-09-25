@@ -6,6 +6,8 @@ module m_axi_reg #(
     // GLOBAL SIGNALS 
     input                           clk,
     input                           areset,
+    input  wire                     BRAM,
+    ////////////////// SLAVE_BUS /////////////////////
     // WRITE SIGNALS
     //   Burst
     input  logic [             3:0] awid_i,
@@ -46,13 +48,50 @@ module m_axi_reg #(
     output logic [             3:0] bid_o,
     output logic [             1:0] bresp_o,
     output logic                    bvalid_o,
-    input  logic                    bready_i
+    input  logic                    bready_i,
+    ////////////////// SLAVE_BUS END /////////////////////
+
+    ////////////////// MASTER_BUS /////////////////////
+
+    // WRITE SIGNALS
+    //   Burst
+    input  logic [             3:0] m_awid_o,
+    // Number of data transfers per burst
+    input  logic [             3:0] m_awlen_o,
+    // Burst transaction data size (2 - 32-bit)
+    input  logic [             2:0] m_awsize_o,
+    // Burst type
+    // 0'b00    fixed
+    // 0'b01    incrementing
+    // 0'b10    wrap
+    // 0'b11    -
+    input  reg [             1:0] m_awburst_o,
+    //   Address
+    input  reg [            63:0] m_awaddr_o,
+    input  reg                    m_awvalid_o,
+    output reg                    m_awready_i,
+    //   Data
+    input  reg [             3:0] m_wid_o,
+    input  reg [DATA_WIDTH - 1:0] m_wdata_o,
+    input  reg [             3:0] m_wstrb_o,
+    input  reg                    m_wlast_o,
+    input  reg                    m_wvalid_o,
+    output reg                    m_wready_i,
+    // RESPONSE SIGNALS
+    output reg [             3:0] m_bid_i,
+    output reg [             1:0] m_bresp_i,
+    output reg                    m_bvalid_i,
+    input  reg                    m_bready_o
+    ////////////////// MASTER_BUS END /////////////////////
 );
+
+  typedef enum bit[32:0] { ENABLED, ADDR_W_0, ADDR_W_1, LENGTH, INCR_STEP, STATUS } REG_TYPE;
 
   logic [DATA_WIDTH - 1:0] BRAM     [0 : BRAM_QUANTITY - 1];
 
   /* Module signals */
 
+  wire correct_addr;
   logic [ADDR_WIDTH - 1:0] awaddr_ff;
   logic [DATA_WIDTH - 1:0] wdata_ff;
 
@@ -77,7 +116,12 @@ module m_axi_reg #(
 
   logic [             3:0] burst_counter;
 
-  logic [DATA_WIDTH - 1:0] crc_result;
+  typedef enum bit[2:0] { IDLE, WRITING_ADDR, WRITING_DATA, DATA_RESPONSE, INCR_VAL } counter_states;
+  logic [ 2:0]             counter_status;
+  logic [ 2:0]             cnt_state_next; 
+  logic [ 2:0]             cnt_state;
+
+  logic [31:0]             counter_ff;
 
   /* Functional methods */
 
@@ -119,6 +163,7 @@ module m_axi_reg #(
       if(wready_en && !wlast_i) begin
         burst_counter <= burst_counter + 1;
 
+      /*
         case (awburst_ff)
           2'b00: begin
             // Addr not changed
@@ -141,6 +186,7 @@ module m_axi_reg #(
             
           end
         endcase
+        */
       end
     end
   end
@@ -192,6 +238,8 @@ module m_axi_reg #(
             if (wstrb_i[2] == 1) BRAM[i][(8*2)+7:(8*2)] <= wdata_ff[(8*2)+7:(8*2)];
             if (wstrb_i[3] == 1) BRAM[i][(8*3)+7:(8*3)] <= wdata_ff[(8*3)+7:(8*3)];
           end
+          // READ ONLY REGISTER (COUNTER STATUS)
+          BRAM[BRAM_QUANTITY] = { 30'b0 , counter_status };
         end
       end
     end
@@ -245,7 +293,7 @@ module m_axi_reg #(
         bvalid_en  <= 0;
       end
 
-      if (can_write_data && wlast_i) begin
+      if (can_write_data && !bvalid_en /* TODO: WLAST && wlast_i */ ) begin
         bvalid_en <= 1;
       end
     end
@@ -285,5 +333,123 @@ module m_axi_reg #(
   end
 
   assign rdata_o = rdata_ff;
+
+  // Counter State Machine
+  always_ff @(posedge clk or negedge areset) begin
+    if (~areset) begin
+      cnt_state_next <= IDLE;
+    end else begin
+      case (cnt_state)
+          IDLE: begin
+            if(BRAM[ENABLED]) begin
+              cnt_state_next <= WRITING_ADDR;
+            end
+          end
+          WRITING_ADDR: begin
+            if(m_awready_i) begin
+              cnt_state_next <= WRITING_DATA;
+            end
+          end
+          WRITING_DATA: begin
+            if(m_wready_i) begin
+              cnt_state_next <= DATA_RESPONSE;
+            end
+          end
+          DATA_RESPONSE: begin
+            if(m_bvalid_i) begin
+              cnt_state_next <= INCR_VAL;
+            end
+          end
+          INCR_VAL: begin
+            if(BRAM[ENABLED]) begin
+              cnt_state_next <= WRITING_ADDR;
+            end
+            else begin
+              cnt_state_next <= IDLE;
+            end
+          end
+          default: begin
+            cnt_state_next <= IDLE;
+          end
+        endcase
+    end
+  end
+
+  // Current Counter State
+  always_ff @(posedge clk or negedge areset) begin
+    if (~areset) begin
+      cnt_state <= IDLE;
+    end else begin
+      cnt_state <= cnt_state_next;
+    end
+  end
+
+  // Counter 
+  always_ff @(posedge clk or negedge areset) begin
+    if (~areset) begin
+      counter_ff <= '0;
+    end else begin
+      if(cnt_state == INCR_VAL) begin
+          counter_ff += BRAM[INCR_STEP];
+      end
+    end
+  end
+
+  // Address valid
+  always_ff @(posedge clk or negedge areset) begin
+    if (~areset) begin
+      m_awvalid_o <= '0;
+    end else begin
+      if(cnt_state == WRITING_ADDR) begin
+        m_awvalid_o <= 1;
+        if(m_awready_i) begin
+          m_awvalid_o <= 0;
+        end
+      end
+    end
+  end
+
+  // Data valid
+  always_ff @(posedge clk or negedge areset) begin
+    if (~areset) begin
+      m_wvalid_o <= '0;
+    end else begin
+      if(cnt_state == WRITING_DATA) begin
+        m_wvalid_o <= 1;
+        if(m_awready_i) begin
+          m_wvalid_o <= 0;
+        end
+      end
+    end
+  end
+
+  // Data 
+  always_ff @(posedge clk or negedge areset) begin
+    if (~areset) begin
+      m_wdata_o <= '0;
+      m_wstrb_o <= '1;
+    end else begin
+      if(cnt_state == WRITING_DATA) begin
+        m_wdata_o <= counter_ff;
+      end
+    end
+  end
+
+  // Response valid
+  always_ff @(posedge clk or negedge areset) begin
+    if (~areset) begin
+      m_bready_o <= '0;
+    end else begin
+      if(cnt_state == DATA_RESPONSE) begin
+        m_bready_o <= 1;
+        if(m_bvalid_i) begin
+          m_bready_o <= 0;
+        end
+      end
+    end
+  end
+
+  assign counter_status = cnt_state;
+  assign m_awaddr_o = { BRAM[ADDR_W_0], BRAM[ADDR_W_1] };
 
 endmodule
