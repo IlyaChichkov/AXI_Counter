@@ -1,7 +1,7 @@
 module s_axi_reg #(
     parameter DATA_WIDTH = 32,
     parameter ADDR_WIDTH = 32,
-    parameter BRAM_QUANTITY = 8
+    parameter BRAM_QUANTITY = 6
 ) (
     // GLOBAL SIGNALS 
     output logic  [DATA_WIDTH - 1:0] m_bram_o [0 : BRAM_QUANTITY - 1],
