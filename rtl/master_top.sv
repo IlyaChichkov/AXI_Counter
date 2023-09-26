@@ -1,7 +1,7 @@
 module master_top#(
     parameter DATA_WIDTH = 32,
     parameter ADDR_WIDTH = 32,
-    parameter BRAM_QUANTITY = 8
+    parameter BRAM_QUANTITY = 6
 )(
     input                           clk,
     input                           areset,
