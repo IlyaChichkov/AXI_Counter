@@ -91,9 +91,6 @@ module s_axi_reg #(
         awready_en <= 1;
       end
 
-      if (write_handshake && !has_data && has_addr) begin
-        awready_en <= 1;  // Got data -> ready HIGH 
-      end
     end
   end
 
