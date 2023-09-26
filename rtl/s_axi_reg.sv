@@ -37,7 +37,9 @@ module s_axi_reg #(
     output logic [             3:0] bid_o,
     output logic [             1:0] bresp_o,
     output logic                    bvalid_o,
-    input  logic                    bready_i
+    input  logic                    bready_i,
+
+    input  logic [             2:0] master_status_i
 );
 
   logic [DATA_WIDTH - 1:0] BRAM     [0 : BRAM_QUANTITY - 1];
@@ -107,11 +109,17 @@ module s_axi_reg #(
         if (~areset) begin
           BRAM[i] <= 32'b0;
         end else begin
-          if (can_write_data && awaddr_ff == i && waddr_correct) begin
-            if (wstrb_i[0] == 1) BRAM[i][7:0] <= wdata_ff[7:0];
-            if (wstrb_i[1] == 1) BRAM[i][(8*1)+7:(8*1)] <= wdata_ff[(8*1)+7:(8*1)];
-            if (wstrb_i[2] == 1) BRAM[i][(8*2)+7:(8*2)] <= wdata_ff[(8*2)+7:(8*2)];
-            if (wstrb_i[3] == 1) BRAM[i][(8*3)+7:(8*3)] <= wdata_ff[(8*3)+7:(8*3)];
+          if(i < 5)begin
+            if (can_write_data && awaddr_ff == i && waddr_correct) begin
+              if (wstrb_i[0] == 1) BRAM[i][7:0] <= wdata_ff[7:0];
+              if (wstrb_i[1] == 1) BRAM[i][(8*1)+7:(8*1)] <= wdata_ff[(8*1)+7:(8*1)];
+              if (wstrb_i[2] == 1) BRAM[i][(8*2)+7:(8*2)] <= wdata_ff[(8*2)+7:(8*2)];
+              if (wstrb_i[3] == 1) BRAM[i][(8*3)+7:(8*3)] <= wdata_ff[(8*3)+7:(8*3)];
+            end
+          end
+          else
+          begin
+            BRAM[i] <= master_status_i;
           end
         end
       end
