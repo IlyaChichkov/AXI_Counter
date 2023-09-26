@@ -22,7 +22,7 @@ initial begin
 
     // Write addr0
     $display("Write addr0");
-    write_data(32'hC2AAEE2A);
+    write_data(32'h0);
     uncheck_vdata();
 
     write_addr(32'hA3DD0004);
@@ -49,7 +49,7 @@ initial begin
 
     // Write Length
     $display("Write Length");
-    write_data(32'h00000001);
+    write_data(32'h00000004);
     uncheck_vdata();
 
     write_addr(32'hA3DD000C);
@@ -69,6 +69,14 @@ initial begin
     
     m_read_all();
 
+    // Write enable
+    $display("Write enable");
+    write_data(32'h00000000);
+    uncheck_vdata();
+
+    write_addr(32'hA3DD0000);
+    wait_waddr_ready();
+    wait_response_ready();
 end
 
 
@@ -232,11 +240,32 @@ task test_master_counter();
     $display("test master counter...");
     #60;
     m_awready_i = 1;
+    m_wready_i = 0;
     #60;
-    m_wready_i = 1;
-    #60;
-    m_bresp_i = 0;
-    m_bvalid_i = 1;
+    m_awready_i = 0;
+
+    for (int i = 0; i < 4; i++) begin
+        m_bvalid_i = 0;
+        do begin
+            @(posedge clk);
+            $display("Wait m_wvalid_o");
+            #20;
+        end while(!m_wvalid_o);
+        $display("Get burst data[%d]: %h (%d)", i, m_wdata_o, m_wdata_o);
+        m_wready_i = 1;
+        #60;
+        m_wready_i = 0;
+        m_bresp_i = 0;
+        #60;
+        do begin
+            @(posedge clk);
+            $display("Wait m_bready_o");
+            #20;
+        end while(!m_bready_o); 
+        m_bvalid_i = 1;
+        #120;
+    end
+
     $display("done.");
 endtask
 
