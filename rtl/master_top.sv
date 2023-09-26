@@ -56,7 +56,8 @@ module master_top#(
     output logic                    m_bready_o
 );
 
-wire  [DATA_WIDTH - 1:0] m_bram [0 : BRAM_QUANTITY - 1];
+wire [DATA_WIDTH - 1:0] m_bram [0 : BRAM_QUANTITY - 1];
+wire [             2:0] master_status;
 
 s_axi_reg #(
     .DATA_WIDTH (DATA_WIDTH),
@@ -84,7 +85,8 @@ s_axi_reg #(
     .bready_i       (bready_i),
     .arready_o      (arready_o),
     .rvalid_o       (rvalid_o),
-    .rdata_o        (rdata_o)
+    .rdata_o        (rdata_o),
+    .master_status_i(master_status)
 );
 
 
@@ -113,6 +115,7 @@ m_axi_reg #(
     .bid_i          (m_bid_i),
     .bresp_i        (m_bresp_i),
     .bvalid_i       (m_bvalid_i),
-    .bready_o       (m_bready_o)
+    .bready_o       (m_bready_o),
+    .master_status_o(master_status)
 );
 endmodule
