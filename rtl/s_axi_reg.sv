@@ -48,9 +48,6 @@ module s_axi_reg #(
   logic [DATA_WIDTH - 1:0] wdata_ff;
   logic [DATA_WIDTH - 1:0] rdata_ff;
 
-  logic [DATA_WIDTH - 1:0] crc_result;
-  assign crc_result = BRAM[0] ^ BRAM[1] ^ BRAM[2] ^ BRAM[3] ^ BRAM[4] ^ BRAM[5] ^ BRAM[6] ^ BRAM[7];
-
   logic                    has_addr;
   logic                    has_data;
 
@@ -181,7 +178,7 @@ module s_axi_reg #(
       rdata_ff <= 0;
     end else begin
       if(aread_handshake) begin
-        rdata_ff <= read_addr < BRAM_QUANTITY ? BRAM[read_addr] : crc_result;
+        rdata_ff <= read_addr < BRAM_QUANTITY ? BRAM[read_addr] : master_status_i;
       end
     end
   end
