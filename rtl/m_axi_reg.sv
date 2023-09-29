@@ -36,7 +36,10 @@ module m_axi_reg #(
     input  logic [             3:0] bid_i,
     input  logic [             1:0] bresp_i,
     input  logic                    bvalid_i,
-    output logic                    bready_o
+    output logic                    bready_o,
+
+    // Master module signals
+    output logic [             2:0] master_status_o
 );
 
   /* Module signals */
@@ -56,57 +59,60 @@ module m_axi_reg #(
   logic                    counter_en;
   logic [31:0]             counter_ff;
 
+  assign master_status_o = cnt_state;
+
   // Counter State Machine
   always_ff @(posedge clk or negedge areset) begin
     if (~areset) begin
       cnt_state_next <= IDLE;
     end else begin
-      case (cnt_state)
-          IDLE: begin
+      if(!BRAM[ENABLED]) begin
+        cnt_state_next <= IDLE;
+      end
+      else
+      begin
+        case (cnt_state)
+          IDLE: begin           // STATE 00
             if(BRAM[ENABLED]) begin
               cnt_state_next <= WRITING_ADDR;
             end
           end
-          WRITING_ADDR: begin
+          WRITING_ADDR: begin   // STATE 01
             if(awready_i) begin
               cnt_state_next <= WRITING_DATA;
             end
           end
-          WRITING_DATA: begin
+          WRITING_DATA: begin   // STATE 02
             if(wready_i) begin
               cnt_state_next <= DATA_RESPONSE;
             end
           end
-          DATA_RESPONSE: begin
+          DATA_RESPONSE: begin  // STATE 03
             if(bvalid_i) begin
               cnt_state_next <= INCR_VAL;
             end
           end
-          INCR_VAL: begin
-            if(BRAM[ENABLED]) begin
-              if(current_burst_cnt < burst_len) begin
-                cnt_state_next <= WRITING_DATA;
-              end
-              else
-              begin
-                cnt_state_next <= WRITING_ADDR;
-              end
+          INCR_VAL: begin       // STATE 04
+            if(current_burst_cnt < burst_len) begin
+              cnt_state_next <= WRITING_DATA;
             end
-            else begin
-              cnt_state_next <= IDLE;
+            else
+            begin
+              cnt_state_next <= WRITING_ADDR;
             end
           end
           default: begin
-            cnt_state_next <= IDLE;
           end
         endcase
+      end
+      
     end
   end
 
   // Current Counter State
   always_ff @(posedge clk or negedge areset) begin
     if (~areset) begin
-      cnt_state <= IDLE;
+      cnt_state <= 0;
     end else begin
       cnt_state <= cnt_state_next;
     end
@@ -128,7 +134,7 @@ module m_axi_reg #(
     if (~areset) begin
       counter_en <= 1;
     end else begin
-      if(cnt_state == WRITING_ADDR) begin
+      if(cnt_state == WRITING_DATA) begin
         counter_en <= 1;
       end
       if(cnt_state == INCR_VAL) begin
@@ -200,7 +206,8 @@ module m_axi_reg #(
       awburst_o <= 1;
       awsize_o <= 'b101;
     end else begin
-      
+      awburst_o <= 0;
+      awsize_o <= 'b101;
     end
   end
 
@@ -218,9 +225,26 @@ module m_axi_reg #(
     if (~areset) begin
       wlast_o <= 0;
     end else begin
-      if(current_burst_cnt >= burst_len) begin
-        wlast_o <= 1;
+      if(cnt_state == INCR_STEP) begin
+        if(current_burst_cnt + 1 >= burst_len) begin
+          wlast_o <= 1;
+        end
       end
+
+      case (cnt_state)
+      INCR_STEP: begin
+        if(current_burst_cnt + 1 >= burst_len) begin
+          wlast_o <= 1;
+        end
+        else
+        begin
+          wlast_o <= 0;
+        end
+      end
+      DATA_RESPONSE: begin
+        wlast_o <= 0;
+      end
+      endcase
     end
   end
 
