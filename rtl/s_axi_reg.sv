@@ -58,6 +58,7 @@ module s_axi_reg #(
   logic                    aread_handshake;
   logic                    read_handshake;
 
+  logic                    awcorrect;
   logic                    can_write;
 
   assign awrite_handshake = awvalid_i && awready_o;
@@ -66,7 +67,8 @@ module s_axi_reg #(
   assign write_handshake = wvalid_i && wready_o;
   assign read_handshake = rvalid_o && rready_i;
 
-  assign can_write = has_addr && has_data;
+  assign awcorrect = write_addr < BRAM_QUANTITY;
+  assign can_write = has_addr && has_data && awcorrect;
 
   assign rdata_o = rdata_ff;
 
@@ -224,7 +226,7 @@ module s_axi_reg #(
       bresp_o <= 0;
     end else begin
       if(has_addr && has_data) begin
-        bresp_o <= 0;
+        bresp_o <= awcorrect ? 0 : 2;
       end
       if(resp_handshake) begin
         bresp_o <= 0;
