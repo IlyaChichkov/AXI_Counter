@@ -1,4 +1,4 @@
-# Счетик с AXI Slave/Master
+# Счетчик с AXI Slave/Master
 
 Блок счетчика с интерфейсом AXI-4, имеющий Master и Slave порты, написанный на SystemVerilog.
 
